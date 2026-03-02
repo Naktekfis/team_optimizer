@@ -2182,35 +2182,81 @@ async function runGA(){
       // 1) Mark locked students
       groupAnalysis.lockedGroups.forEach(g => g.members.forEach(idx => lockedSet.add(idx)));
       
-      // 2) Build studentsToOptimize: partial members first (pinned), then unassigned
-      //    This ensures partial group members land at the start of every permutation,
-      //    and makePartition() will group them into the same team.
+      // 2) Collect partial members and free students
+      const allPartialMembers = new Set();
+      groupAnalysis.partialGroups.forEach(g => g.members.forEach(idx => allPartialMembers.add(idx)));
       
-      // Add partial group members as pinned blocks
-      groupAnalysis.partialGroups.forEach(g => {
-        const blockStart = studentsToOptimize.length;
-        g.members.forEach(idx => studentsToOptimize.push(idx));
-        const blockEnd = studentsToOptimize.length;
-        pinnedBlocks.push(Array.from({length: blockEnd - blockStart}, (_, k) => blockStart + k));
-      });
-      
-      const pinnedSize = studentsToOptimize.length;
-      
-      // Add unassigned students
+      const freeStudents = [];
       for(let i = 0; i < n; i++) {
-        if(!lockedSet.has(i) && !studentsToOptimize.includes(i)) {
-          studentsToOptimize.push(i);
+        if(!lockedSet.has(i) && !allPartialMembers.has(i)) {
+          freeStudents.push(i);
         }
       }
       
-      const nToOptimize = studentsToOptimize.length;
+      const nToOptimize = allPartialMembers.size + freeStudents.length;
       
-      log(`[STRATEGY] ${lockedSet.size} locked (excluded), ${pinnedSize} pinned (partial groups), ${nToOptimize - pinnedSize} free`, 'info');
-      log(`[STRATEGY] GA will optimize ${nToOptimize} students`, 'info');
+      // 3) Calculate team layout (same logic as makePartition)
+      //    so partial groups are aligned to team boundaries
+      const optRemainder = nToOptimize % teamSize;
+      const nTeamsLarge = optRemainder; // teams of size teamSize+1
+      const nTeamsNormal = (nToOptimize - nTeamsLarge * (teamSize + 1)) / teamSize;
+      const totalOptTeams = nTeamsLarge + nTeamsNormal;
+      
+      // Calculate team boundaries (start position + size of each team in permutation)
+      const teamBounds = []; // [{start, size}]
+      let pos = 0;
+      for(let t = 0; t < totalOptTeams; t++) {
+        const sz = t < nTeamsLarge ? teamSize + 1 : teamSize;
+        teamBounds.push({start: pos, size: sz});
+        pos += sz;
+      }
+      
+      // 4) Assign each partial group to a SEPARATE team slot
+      //    Place partial members at the START of that team's position range
+      //    This ensures makePartition() groups them into the same team
+      const stoArr = new Array(nToOptimize);
+      const usedPositions = new Set();
+      
+      groupAnalysis.partialGroups.forEach((g, gi) => {
+        if(gi >= totalOptTeams) {
+          log(`[WARN] Partial group ${g.id} has no team slot (too many partial groups)`, 'warn');
+          return;
+        }
+        const teamStart = teamBounds[gi].start;
+        g.members.forEach((fullIdx, k) => {
+          stoArr[teamStart + k] = fullIdx;
+          usedPositions.add(teamStart + k);
+        });
+      });
+      
+      // Build pinnedBlocks: one array per partial group, aligned to team boundaries
+      groupAnalysis.partialGroups.forEach((g, gi) => {
+        if(gi >= totalOptTeams) return;
+        const teamStart = teamBounds[gi].start;
+        const block = g.members.map((_, k) => teamStart + k);
+        pinnedBlocks.push(block);
+      });
+      
+      // 5) Fill remaining positions with free students
+      let freeIdx = 0;
+      for(let i = 0; i < nToOptimize; i++) {
+        if(!usedPositions.has(i)) {
+          stoArr[i] = freeStudents[freeIdx++];
+        }
+      }
+      
+      // Copy to studentsToOptimize
+      stoArr.forEach(v => studentsToOptimize.push(v));
+      
+      const pinnedSize = allPartialMembers.size;
+      
+      log(`[STRATEGY] ${lockedSet.size} locked (excluded), ${pinnedSize} pinned (partial groups), ${freeStudents.length} free`, 'info');
+      log(`[STRATEGY] GA will optimize ${nToOptimize} students across ${totalOptTeams} teams`, 'info');
       if(pinnedBlocks.length > 0) {
         pinnedBlocks.forEach((block, bi) => {
           const names = block.map(si => data[studentsToOptimize[si]].Nama).join(', ');
-          log(`  • Pinned block ${bi+1}: [${names}]`, 'info');
+          const teamBound = teamBounds[bi];
+          log(`  • Pinned block ${bi+1} → Team slot ${bi+1} (pos ${teamBound.start}-${teamBound.start+teamBound.size-1}): [${names}]`, 'info');
         });
       }
       
@@ -2289,22 +2335,24 @@ async function runGA(){
     // Run GA if needed
     if(!bestOverall) {
       for(let run=0;run<ensembleN;run++){
-        let currentW_norm, currentMnoise;
+        let currentW_norm, currentMnoise, currentInconsistency;
         
         if(isSubsetMode) {
           // Subset mode: build matrices for only the students we're optimizing
           currentW_norm = studentsToOptimize.map(fullIdx => W_norm[fullIdx]);
+          currentInconsistency = studentsToOptimize.map(fullIdx => inconsistency[fullIdx]);
           
           const Mnoise_full = M.map(row=>row.map(v=>{
             const noise=v+(Math.random()-0.5)*0.2;
             return Math.min(1,Math.max(0,noise));
           }));
-          currentMnoise = studentsToOptimize.map(fullIdx => 
-            studentsToOptimize.map(fullIdx2 => Mnoise_full[fullIdx][fullIdx2])
-          );
+          // M is [n_students][4] (4 MBTI dimensions), NOT a square NxN matrix
+          // Simple row selection to remap to subset indices
+          currentMnoise = studentsToOptimize.map(fullIdx => Mnoise_full[fullIdx]);
         } else {
           // Standard mode: all students
           currentW_norm = W_norm;
+          currentInconsistency = inconsistency;
           currentMnoise = M.map(row=>row.map(v=>{
             const noise=v+(Math.random()-0.5)*0.2;
             return Math.min(1,Math.max(0,noise));
@@ -2342,7 +2390,7 @@ async function runGA(){
           // Evaluate
           const scored=pop.map(p=>{
             const part=makePartition(p,teamSize);
-            const f=fitnessAuto(part,currentW_norm,currentMnoise,inconsistency,weights);
+            const f=fitnessAuto(part,currentW_norm,currentMnoise,currentInconsistency,weights);
             return {p,f};
           });
           scored.sort((a,b)=>b.f.total-a.f.total);
