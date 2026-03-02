@@ -53,7 +53,7 @@ body::before{
 /* LAYOUT */
 .shell{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 24px;}
 
-/* ── HEADER ── */
+/* HEADER */
 header{
   padding:32px 0 24px;
   border-bottom:1px solid var(--border);
@@ -83,7 +83,7 @@ header{
   font-family:'JetBrains Mono',monospace;
 }
 
-/* ── STEPS NAV ── */
+/* STEPS NAV */
 .steps{
   display:flex;gap:0;margin-bottom:32px;
   background:var(--surface);
@@ -127,12 +127,12 @@ header{
 .step-btn.done{color:var(--green);}
 .step-label{font-size:12px;font-weight:500;white-space:nowrap;}
 
-/* ── PANELS ── */
+/* PANELS */
 .panel{display:none;}
 .panel.active{display:block;animation:fadeUp .3s ease;}
 @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
 
-/* ── CARDS ── */
+/* CARDS */
 .card{
   background:var(--surface);
   border:1px solid var(--border);
@@ -154,7 +154,7 @@ header{
   font-size:16px;
 }
 
-/* ── UPLOAD ZONE ── */
+/* UPLOAD ZONE */
 .drop-zone{
   border:2px dashed var(--border2);
   border-radius:16px;
@@ -182,7 +182,7 @@ header{
   font-family:'JetBrains Mono',monospace;
 }
 
-/* ── STATS ROW ── */
+/* STATS ROW */
 .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px;}
 .stat-card{
   background:var(--surface2);
@@ -194,7 +194,7 @@ header{
 .stat-label{font-size:12px;color:var(--muted);font-weight:500;}
 .stat-sub{font-size:11px;color:var(--muted);margin-top:2px;}
 
-/* ── TABLES ── */
+/* TABLES */
 .tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
 table{width:100%;border-collapse:collapse;font-size:13px;}
 thead th{
@@ -637,7 +637,7 @@ tr.assigned-row{
     </button>
   </nav>
 
-  <!-- ─── PANEL 0: IMPORT ─── -->
+  <!-- PANEL 0: IMPORT -->
   <div class="panel active" id="panel0">
     <div class="card">
       <div class="card-title">
@@ -689,7 +689,7 @@ tr.assigned-row{
     </div>
   </div>
 
-  <!-- ─── PANEL 1: REVIEW ─── -->
+  <!-- PANEL 1: REVIEW -->
   <div class="panel" id="panel1">
     <div id="statsRow" class="stats-row"></div>
     
@@ -735,7 +735,7 @@ tr.assigned-row{
     </div>
   </div>
 
-  <!-- ─── PANEL 2: RANDOMISASI ─── -->
+  <!-- PANEL 2: RANDOMISASI -->
   <div class="panel" id="panel2">
     <div class="card">
       <div class="card-title">
@@ -789,7 +789,7 @@ tr.assigned-row{
     </div>
   </div>
 
-  <!-- ─── PANEL 3: ALGO ─── -->
+  <!-- PANEL 3: ALGO -->
   <div class="panel" id="panel3">
     <div class="card">
       <div class="card-title">
@@ -907,7 +907,7 @@ tr.assigned-row{
     </div>
   </div>
 
-  <!-- ─── PANEL 4: RESULTS ─── -->
+  <!-- PANEL 4: RESULTS -->
   <div class="panel" id="panel4">
     <div id="globalScores" class="global-scores"></div>
     
@@ -964,9 +964,7 @@ tr.assigned-row{
 </div>
 
 <script>
-// ═══════════════════════════════════════════════════════════════
 //  STATE
-// ═══════════════════════════════════════════════════════════════
 let rawData = [];
 let cleanData = [];
 let workingData = [];
@@ -999,9 +997,7 @@ const TEAM_COLORS = [
   ['#f87171','#7f1d1d'],['#38bdf8','#0c4a6e'],
 ];
 
-// ═══════════════════════════════════════════════════════════════
 //  NAVIGATION
-// ═══════════════════════════════════════════════════════════════
 function goStep(idx){
   // Validation: don't allow skipping steps
   if(idx>0 && cleanData.length===0) {
@@ -1024,9 +1020,7 @@ function goStep(idx){
   if(idx===3) updateTeamPreview();
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  PERFORMANCE MODE
-// ═══════════════════════════════════════════════════════════════
 function setPerfMode(mode) {
   PERFORMANCE_MODE = mode;
   console.log(`[PERF] Performance mode set to: ${mode}`);
@@ -1034,9 +1028,7 @@ function setPerfMode(mode) {
   console.log(`[PERF] Expected speedup: ${mode === 'optimized' ? '3-6x faster' : 'baseline'}`);
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  ERROR HANDLING & VALIDATION (Must be before handleFile)
-// ═══════════════════════════════════════════════════════════════
 function showError(message) {
   const toast = document.createElement('div');
   toast.className = 'error-toast';
@@ -1086,9 +1078,7 @@ function validateImportedData(rows) {
   return true;
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  DRAG & DROP
-// ═══════════════════════════════════════════════════════════════
 const dz = document.getElementById('dropZone');
 dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
 dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
@@ -1097,9 +1087,7 @@ dz.addEventListener('drop',e=>{
   handleFile({target:{files:e.dataTransfer.files}});
 });
 
-// ═══════════════════════════════════════════════════════════════
 //  FILE HANDLING
-// ═══════════════════════════════════════════════════════════════
 function handleFile(e){
   console.log('[handleFile] Called', e);
   const file = e.target.files[0];
@@ -1174,9 +1162,7 @@ function parseCSV(text){
   });
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  PROCESSING & CLEANING
-// ═══════════════════════════════════════════════════════════════
 function processRaw(rows){
   // Filter rows yang punya nama
   rawData = rows.filter(r => r.Nama && String(r.Nama).trim() !== '' && String(r.Nama) !== 'null');
@@ -1257,9 +1243,7 @@ function processRaw(rows){
     : `<div class="alert alert-ok">Semua data bersih, tidak ada cell kosong yang perlu diperbaiki.</div>`;
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  TABLE RENDER
-// ═══════════════════════════════════════════════════════════════
 function renderTable(){
   if(!cleanData.length) return;
   const q = (document.getElementById('searchInput')||{}).value?.toLowerCase()||'';
@@ -1318,9 +1302,7 @@ function skillBadge(v){
   return `<span class="skill-0">·</span>`;
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  PRE-ASSIGNMENT SYSTEM
-// ═══════════════════════════════════════════════════════════════
 
 function toggleStudentSelection(index) {
   if(selectedStudents.has(index)) {
@@ -1559,7 +1541,6 @@ function combineLockedAndOptimized(lockedGroups, subsetPartition, studentsToOpti
   return result;
 }
 
-// ═══════════════════════════════════════════════════════════════
 
 function renderRandTable(){
   if(!workingData.length) return;
@@ -1582,9 +1563,7 @@ function renderRandTable(){
   }).join('');
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  RANDOMIZE
-// ═══════════════════════════════════════════════════════════════
 function randomize(){
   const fillPct  = parseInt(document.getElementById('fillPct').value)/100;
   const prob2    = parseInt(document.getElementById('prob2').value)/100;
@@ -1667,9 +1646,7 @@ async function runGASafe() {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  WEIGHT UPDATER
-// ═══════════════════════════════════════════════════════════════
 function updateWeights(){
   const s = parseInt(document.getElementById('wSkill').value);
   const m = parseInt(document.getElementById('wMbti').value);
@@ -1689,9 +1666,7 @@ function updateTeamPreview(){
     : '';
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  PREPROCESSING: SSW + Z-SCORE + MBTI ENCODE
-// ═══════════════════════════════════════════════════════════════
 function preprocess(data){
   const MBTI_MAP = {'E':1,'I':0,'N':1,'S':0,'T':1,'F':0,'J':1,'P':0};
 
@@ -1741,9 +1716,7 @@ function preprocess(data){
   return {W_norm, M, inconsistency};
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  FITNESS FUNCTION
-// ═══════════════════════════════════════════════════════════════
 function fitness(partition, W_norm, M, inconsistency, weights){
   const {wSkill,wMbti,wBal}=weights;
   let totalFSkill=0, totalFPers=0;
@@ -1815,9 +1788,7 @@ function fitness(partition, W_norm, M, inconsistency, weights){
   };
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  OPTIMIZED FITNESS FUNCTION (OPT-1: Cached W_norm lookups)
-// ═══════════════════════════════════════════════════════════════
 // This version caches W_norm[i][j] lookups to avoid redundant array accesses
 // Performance improvement: ~30-40% faster than original fitness()
 // Results are mathematically identical to the original function
@@ -1902,9 +1873,7 @@ function fitnessAuto(partition, W_norm, M, inconsistency, weights){
   return fitness(partition, W_norm, M, inconsistency, weights);
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  GA CORE
-// ═══════════════════════════════════════════════════════════════
 function makePartition(perm, teamSize){
   const n = perm.length;
   const remainder = n % teamSize;
@@ -2059,9 +2028,7 @@ function validatePartition(partition, n){
   return true;
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  RUN GA (async with progress + parallelization)
-// ═══════════════════════════════════════════════════════════════
 async function runGA(){
   const data = workingData.length>0 ? workingData : cleanData;
   if(!data.length){alert('Import data dulu!');return;}
@@ -2202,7 +2169,7 @@ async function runGA(){
   if(!bestOverall) {
     log('[SEQUENTIAL] Running ensemble sequentially', 'info');
     
-    // ── BUILD OPTIMIZATION STRATEGY ──
+    // BUILD OPTIMIZATION STRATEGY
     // lockedSet = students in full groups → EXCLUDED from GA entirely
     // pinnedBlocks = partial group members → PINNED together at start of permutation
     // freeStudents = unassigned → GA optimizes freely
@@ -2578,9 +2545,7 @@ async function runGA(){
 
 function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
-// ═══════════════════════════════════════════════════════════════
 //  RENDER RESULTS
-// ═══════════════════════════════════════════════════════════════
 function renderResults(){
   const {partition,fitness:fit,data,W_norm,M,inconsistency} = gaResults;
 
@@ -2705,9 +2670,7 @@ function renderResults(){
   }).join('');
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  EXPORT
-// ═══════════════════════════════════════════════════════════════
 function exportClean(){
   if(!cleanData.length) return;
   const ws = XLSX.utils.json_to_sheet(cleanData);
@@ -2740,9 +2703,7 @@ function exportResults(){
   XLSX.writeFile(wb,'teammaker_results.xlsx');
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  WEB WORKERS PARALLELIZATION
-// ═══════════════════════════════════════════════════════════════
 
 // Worker code as string (inline, no separate file needed)
 const workerCode = `
@@ -2997,9 +2958,7 @@ class WorkerPool {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════
 //  INIT & LIBRARY CHECK
-// ═══════════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', function() {
   // Check if XLSX library loaded
   if (typeof XLSX === 'undefined') {
