@@ -1,0 +1,3022 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Team Maker — Intelligent Team Formation</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg:       #0a0e1a;
+  --surface:  #111827;
+  --surface2: #1a2235;
+  --border:   #1f2d45;
+  --border2:  #263548;
+  --text:     #e8edf5;
+  --muted:    #6b7a99;
+  --accent:   #3b82f6;
+  --accent2:  #06b6d4;
+  --green:    #10b981;
+  --orange:   #f59e0b;
+  --red:      #ef4444;
+  --purple:   #8b5cf6;
+  --glow:     rgba(59,130,246,0.15);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+
+body{
+  font-family:'Space Grotesk',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* BACKGROUND MESH */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background:
+    radial-gradient(ellipse 80% 50% at 20% 20%, rgba(59,130,246,0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(6,182,212,0.06) 0%, transparent 50%),
+    radial-gradient(ellipse 40% 60% at 60% 30%, rgba(139,92,246,0.04) 0%, transparent 40%);
+  pointer-events:none;
+  z-index:0;
+}
+
+/* LAYOUT */
+.shell{position:relative;z-index:1;max-width:1400px;margin:0 auto;padding:0 24px;}
+
+/* ── HEADER ── */
+header{
+  padding:32px 0 24px;
+  border-bottom:1px solid var(--border);
+  margin-bottom:32px;
+  display:flex;
+  align-items:center;
+  gap:20px;
+}
+.logo-icon{
+  width:48px;height:48px;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:22px;
+  box-shadow:0 0 24px rgba(59,130,246,0.4);
+  flex-shrink:0;
+}
+.logo-text h1{font-size:28px;font-weight:700;letter-spacing:-0.5px;}
+.logo-text p{font-size:13px;color:var(--muted);margin-top:2px;}
+.badge{
+  margin-left:auto;
+  background:rgba(59,130,246,0.15);
+  border:1px solid rgba(59,130,246,0.3);
+  color:var(--accent);
+  font-size:11px;font-weight:600;letter-spacing:0.5px;
+  padding:4px 12px;border-radius:20px;
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* ── STEPS NAV ── */
+.steps{
+  display:flex;gap:0;margin-bottom:32px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:6px;
+  overflow-x:auto;
+}
+.step-btn{
+  flex:1;min-width:120px;
+  display:flex;flex-direction:column;align-items:center;gap:4px;
+  padding:12px 16px;
+  border-radius:12px;
+  border:none;
+  background:transparent;
+  color:var(--muted);
+  cursor:pointer;
+  transition:all .2s;
+  font-family:'Space Grotesk',sans-serif;
+}
+.step-btn:hover{background:var(--surface2);color:var(--text);}
+.step-btn.active{
+  background:linear-gradient(135deg,rgba(59,130,246,0.25),rgba(6,182,212,0.15));
+  color:var(--accent);
+  border:1px solid rgba(59,130,246,0.3);
+}
+.step-num{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:700;
+  background:var(--border2);
+  color:var(--muted);
+  transition:all .2s;
+}
+.step-btn.active .step-num{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;
+  box-shadow:0 0 12px rgba(59,130,246,0.5);
+}
+.step-btn.done .step-num{background:var(--green);color:#fff;}
+.step-btn.done{color:var(--green);}
+.step-label{font-size:12px;font-weight:500;white-space:nowrap;}
+
+/* ── PANELS ── */
+.panel{display:none;}
+.panel.active{display:block;animation:fadeUp .3s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:none;}}
+
+/* ── CARDS ── */
+.card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:28px;
+  margin-bottom:24px;
+}
+.card-title{
+  font-size:15px;font-weight:600;
+  color:var(--text);
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:20px;
+  padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+}
+.card-title .icon{
+  width:32px;height:32px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;
+}
+
+/* ── UPLOAD ZONE ── */
+.drop-zone{
+  border:2px dashed var(--border2);
+  border-radius:16px;
+  padding:60px 40px;
+  text-align:center;
+  cursor:pointer;
+  transition:all .25s;
+  position:relative;
+}
+.drop-zone:hover,.drop-zone.drag{
+  border-color:var(--accent);
+  background:var(--glow);
+}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.drop-icon{font-size:48px;margin-bottom:16px;}
+.drop-title{font-size:18px;font-weight:600;margin-bottom:6px;}
+.drop-sub{font-size:13px;color:var(--muted);}
+.drop-formats{
+  display:flex;gap:8px;justify-content:center;margin-top:16px;
+}
+.fmt-badge{
+  background:var(--surface2);border:1px solid var(--border2);
+  color:var(--muted);font-size:11px;font-weight:600;
+  padding:3px 10px;border-radius:6px;
+  font-family:'JetBrains Mono',monospace;
+}
+
+/* ── STATS ROW ── */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px;margin-bottom:24px;}
+.stat-card{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:18px;
+}
+.stat-val{font-size:32px;font-weight:700;line-height:1;margin-bottom:4px;}
+.stat-label{font-size:12px;color:var(--muted);font-weight:500;}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ── TABLES ── */
+.tbl-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{
+  background:var(--surface2);
+  color:var(--muted);
+  font-weight:600;font-size:11px;letter-spacing:0.5px;
+  padding:12px 14px;
+  text-align:left;
+  white-space:nowrap;
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:2;
+}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;}
+tbody tr:hover{background:var(--surface2);}
+tbody tr:last-child{border-bottom:none;}
+td{padding:10px 14px;white-space:nowrap;}
+.td-name{font-weight:500;color:var(--text);}
+.td-nim{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:11px;}
+
+/* SKILL BADGES */
+.skill-0{color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.skill-1{
+  background:rgba(245,158,11,0.15);color:var(--orange);
+  padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;
+}
+.skill-2{
+  background:rgba(16,185,129,0.15);color:var(--green);
+  padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;
+}
+.mbti-chip{
+  background:rgba(139,92,246,0.15);
+  border:1px solid rgba(139,92,246,0.3);
+  color:var(--purple);
+  padding:2px 10px;border-radius:20px;
+  font-size:11px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;
+}
+.mbti-missing{color:var(--border2);font-family:'JetBrains Mono',monospace;font-size:11px;}
+
+/* RANDOMIZE */
+.random-controls{display:flex;gap:16px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px;}
+.form-group{display:flex;flex-direction:column;gap:6px;}
+.form-label{font-size:12px;color:var(--muted);font-weight:600;}
+.form-input{
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  color:var(--text);
+  border-radius:10px;
+  padding:9px 14px;
+  font-size:13px;
+  font-family:'Space Grotesk',sans-serif;
+  outline:none;
+  transition:border-color .2s;
+}
+.form-input:focus{border-color:var(--accent);}
+select.form-input option{background:var(--surface2);}
+
+/* TOGGLE SWITCH */
+.toggle-group{display:flex;align-items:center;gap:10px;}
+.toggle{position:relative;width:44px;height:24px;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-track{
+  position:absolute;inset:0;
+  background:var(--border2);border-radius:24px;
+  cursor:pointer;transition:background .2s;
+}
+.toggle input:checked+.toggle-track{background:var(--accent);}
+.toggle-thumb{
+  position:absolute;left:3px;top:3px;
+  width:18px;height:18px;
+  background:#fff;border-radius:50%;
+  transition:transform .2s;
+  pointer-events:none;
+}
+.toggle input:checked~.toggle-thumb{transform:translateX(20px);}
+
+/* BUTTONS */
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:11px 22px;border-radius:12px;
+  font-family:'Space Grotesk',sans-serif;
+  font-size:14px;font-weight:600;
+  border:none;cursor:pointer;
+  transition:all .2s;
+}
+.btn-primary{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  color:#fff;
+  box-shadow:0 4px 20px rgba(59,130,246,0.3);
+}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 6px 28px rgba(59,130,246,0.45);}
+.btn-primary:active{transform:none;}
+.btn-secondary{
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  color:var(--text);
+}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent);}
+.btn-ghost{background:transparent;color:var(--muted);padding:9px 14px;}
+.btn-ghost:hover{color:var(--text);}
+.btn-danger{background:rgba(239,68,68,0.15);border:1px solid rgba(239,68,68,0.3);color:var(--red);}
+.btn-danger:hover{background:rgba(239,68,68,0.25);}
+.btn:disabled{opacity:0.4;cursor:not-allowed;transform:none!important;}
+
+/* ALGO SETTINGS */
+.settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;}
+.range-wrap{display:flex;flex-direction:column;gap:6px;}
+.range-val{font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:13px;font-weight:500;}
+input[type=range]{
+  -webkit-appearance:none;width:100%;height:4px;
+  background:var(--border2);border-radius:4px;outline:none;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:16px;height:16px;
+  background:var(--accent);border-radius:50%;cursor:pointer;
+  box-shadow:0 0 8px rgba(59,130,246,0.4);
+}
+
+/* PROGRESS */
+.progress-bar{
+  height:6px;background:var(--border2);border-radius:6px;margin:16px 0;overflow:hidden;
+}
+.progress-fill{
+  height:100%;border-radius:6px;
+  background:linear-gradient(90deg,var(--accent),var(--accent2));
+  transition:width .3s;
+  position:relative;
+}
+.progress-fill::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.3),transparent);
+  animation:shimmer 1.5s infinite;
+}
+@keyframes shimmer{from{transform:translateX(-100%);}to{transform:translateX(100%);}}
+.progress-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--muted);}
+.log-box{
+  background:#050810;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:16px;
+  font-family:'JetBrains Mono',monospace;
+  font-size:11px;
+  color:var(--muted);
+  max-height:200px;
+  overflow-y:auto;
+  line-height:1.7;
+}
+.log-box .log-ok{color:var(--green);}
+.log-box .log-info{color:var(--accent);}
+.log-box .log-warn{color:var(--orange);}
+
+/* RESULTS */
+.team-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;}
+.team-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:18px;
+  overflow:hidden;
+  transition:transform .2s,border-color .2s;
+}
+.team-card:hover{transform:translateY(-2px);border-color:var(--border2);}
+.team-header{
+  padding:18px 20px 14px;
+  display:flex;align-items:center;gap:12px;
+}
+.team-avatar{
+  width:44px;height:44px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;color:#fff;
+  flex-shrink:0;
+}
+.team-meta h3{font-size:15px;font-weight:700;}
+.team-meta p{font-size:12px;color:var(--muted);margin-top:1px;}
+.team-scores{
+  display:flex;gap:6px;
+  padding:0 20px 14px;
+  flex-wrap:wrap;
+}
+.score-pill{
+  display:flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:20px;
+  font-size:11px;font-weight:700;
+  font-family:'JetBrains Mono',monospace;
+}
+.score-pill.skill{background:rgba(16,185,129,0.15);color:var(--green);}
+.score-pill.pers{background:rgba(139,92,246,0.15);color:var(--purple);}
+.score-pill.bal{background:rgba(59,130,246,0.15);color:var(--accent);}
+.score-pill.total{background:rgba(245,158,11,0.15);color:var(--orange);}
+.team-divider{height:1px;background:var(--border);margin:0 20px;}
+.team-members{padding:14px 20px 18px;}
+.member-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 0;
+  border-bottom:1px solid var(--border);
+}
+.member-row:last-child{border-bottom:none;}
+.member-avatar{
+  width:32px;height:32px;border-radius:8px;
+  background:var(--surface2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:var(--muted);
+  flex-shrink:0;
+}
+.member-info{flex:1;min-width:0;}
+.member-name{font-size:13px;font-weight:600;truncate;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.member-nim{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.member-skills{display:flex;gap:4px;flex-wrap:wrap;margin-top:3px;}
+.skill-dot{
+  width:6px;height:6px;border-radius:50%;
+  display:inline-block;
+}
+
+/* COVERAGE BAR */
+.coverage-section{padding:0 20px 18px;}
+.coverage-title{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:8px;letter-spacing:0.5px;}
+.coverage-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.cov-label{font-size:11px;color:var(--muted);width:80px;truncate;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.cov-bar{flex:1;height:6px;background:var(--border2);border-radius:4px;overflow:hidden;}
+.cov-fill{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1);}
+.cov-val{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--muted);width:30px;text-align:right;}
+
+/* GLOBAL SCORES */
+.global-scores{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:16px;margin-bottom:28px;
+}
+.gscore-card{
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:16px;
+  padding:20px;
+  text-align:center;
+}
+.gscore-val{font-size:36px;font-weight:700;line-height:1;margin-bottom:4px;}
+.gscore-label{font-size:12px;color:var(--muted);}
+.gscore-bar{height:4px;border-radius:4px;margin-top:12px;overflow:hidden;background:var(--border2);}
+.gscore-bar-fill{height:100%;border-radius:4px;}
+
+/* FILTER / SEARCH */
+.toolbar{display:flex;gap:12px;align-items:center;margin-bottom:20px;flex-wrap:wrap;}
+.search-box{
+  flex:1;min-width:200px;
+  background:var(--surface2);
+  border:1px solid var(--border2);
+  border-radius:10px;
+  padding:9px 14px 9px 38px;
+  color:var(--text);font-size:13px;
+  font-family:'Space Grotesk',sans-serif;
+  outline:none;
+  transition:border-color .2s;
+  position:relative;
+}
+.search-wrap{position:relative;flex:1;min-width:200px;}
+.search-wrap::before{
+  content:'';position:absolute;left:12px;top:50%;transform:translateY(-50%);
+  font-size:14px;pointer-events:none;z-index:1;
+}
+.search-box:focus{border-color:var(--accent);}
+
+/* ALERT */
+.alert{
+  display:flex;gap:12px;align-items:flex-start;
+  padding:14px 18px;border-radius:12px;
+  margin-bottom:16px;font-size:13px;
+}
+.alert-info{background:rgba(59,130,246,0.1);border:1px solid rgba(59,130,246,0.2);color:var(--accent);}
+.alert-warn{background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.2);color:var(--orange);}
+.alert-ok{background:rgba(16,185,129,0.1);border:1px solid rgba(16,185,129,0.2);color:var(--green);}
+
+/* EXPORT BUTTONS */
+.export-row{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
+
+/* EMPTY STATE */
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-icon{font-size:52px;margin-bottom:16px;}
+.empty h3{font-size:18px;font-weight:600;color:var(--text);margin-bottom:6px;}
+.empty p{font-size:13px;}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px;height:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:6px;}
+
+/* TOOLTIP */
+[title]{cursor:help;}
+
+/* CHIP */
+.chip{
+  display:inline-flex;align-items:center;gap:4px;
+  padding:2px 8px;border-radius:20px;
+  font-size:10px;font-weight:700;letter-spacing:0.3px;
+}
+.chip-blue{background:rgba(59,130,246,0.15);color:var(--accent);border:1px solid rgba(59,130,246,0.25);}
+.chip-green{background:rgba(16,185,129,0.15);color:var(--green);border:1px solid rgba(16,185,129,0.25);}
+.chip-orange{background:rgba(245,158,11,0.15);color:var(--orange);border:1px solid rgba(245,158,11,0.25);}
+.chip-red{background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.25);}
+.chip-purple{background:rgba(139,92,246,0.15);color:var(--purple);border:1px solid rgba(139,92,246,0.25);}
+
+/* ERROR TOAST */
+.error-toast{
+  position:fixed;top:20px;right:20px;z-index:9999;
+  animation:slideIn 0.3s ease;
+}
+@keyframes slideIn{from{transform:translateX(400px);opacity:0;}to{transform:none;opacity:1;}}
+.alert-danger{
+  background:rgba(239,68,68,0.1);
+  border:1px solid rgba(239,68,68,0.3);
+  color:var(--red);
+  padding:14px 18px;
+  border-radius:12px;
+  font-size:13px;
+  max-width:400px;
+  box-shadow:0 8px 32px rgba(239,68,68,0.2);
+}
+.alert-danger button{
+  float:right;border:none;background:transparent;
+  color:var(--red);cursor:pointer;font-size:18px;
+  margin:-4px -4px 0 12px;
+  transition:opacity 0.2s;
+}
+.alert-danger button:hover{opacity:0.7;}
+
+/* PRE-ASSIGNMENT SYSTEM */
+.checkbox-col{width:40px;text-align:center;}
+.student-checkbox{
+  width:18px;height:18px;cursor:pointer;
+  accent-color:var(--accent);
+}
+.student-checkbox:disabled{
+  cursor:not-allowed;opacity:0.4;
+}
+tr.selected-row{
+  background:rgba(59,130,246,0.1);
+  border-left:3px solid var(--accent);
+}
+tr.assigned-row{
+  background:rgba(16,185,129,0.05);
+  opacity:0.7;
+}
+.pre-assign-controls{
+  display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center;
+}
+.pre-assign-controls input[type="text"]{
+  padding:8px 14px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  color:var(--text);
+  font-size:13px;
+  width:150px;
+}
+.groups-summary{
+  margin-top:15px;padding:15px;
+  background:var(--surface2);
+  border:1px solid var(--border);
+  border-radius:12px;
+}
+.groups-summary h4{
+  font-size:14px;margin-bottom:10px;color:var(--muted);
+}
+.group-item{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;margin-bottom:6px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:8px;
+  font-size:13px;
+}
+.group-item.locked{
+  border-color:var(--green);
+  background:rgba(16,185,129,0.05);
+}
+.group-item.partial{
+  border-color:var(--orange);
+  background:rgba(245,158,11,0.05);
+}
+.group-item-name{
+  font-weight:600;color:var(--accent);min-width:80px;
+}
+.group-item-members{
+  flex:1;color:var(--muted);
+}
+.group-item-delete{
+  padding:4px 10px;
+  background:var(--red);
+  border:none;
+  border-radius:6px;
+  color:white;
+  font-size:11px;
+  cursor:pointer;
+  transition:opacity 0.2s;
+}
+.group-item-delete:hover{opacity:0.8;}
+.selected-count{
+  color:var(--accent);font-weight:600;font-size:13px;
+}
+
+/* RESPONSIVE */
+@media(max-width:640px){
+  .steps{flex-wrap:wrap;}
+  .step-btn{min-width:auto;flex:0 0 calc(50% - 3px);}
+  header{flex-wrap:wrap;}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo-text">
+      <h1>Team Maker</h1>
+    </div>
+    <div class="badge">v2.0 · GA + SSW</div>
+  </header>
+
+  <!-- STEP NAV -->
+  <nav class="steps" id="stepNav">
+    <button class="step-btn active" data-step="0" onclick="goStep(0)">
+      <div class="step-num">1</div>
+      <span class="step-label">Import Data</span>
+    </button>
+    <button class="step-btn" data-step="1" onclick="goStep(1)">
+      <div class="step-num">2</div>
+      <span class="step-label">Review & Clean</span>
+    </button>
+    <button class="step-btn" data-step="2" onclick="goStep(2)">
+      <div class="step-num">3</div>
+      <span class="step-label">Randomisasi</span>
+    </button>
+    <button class="step-btn" data-step="3" onclick="goStep(3)">
+      <div class="step-num">4</div>
+      <span class="step-label">Konfigurasi Algo</span>
+    </button>
+    <button class="step-btn" data-step="4" onclick="goStep(4)">
+      <div class="step-num">5</div>
+      <span class="step-label">Hasil Tim</span>
+    </button>
+  </nav>
+
+  <!-- ─── PANEL 0: IMPORT ─── -->
+  <div class="panel active" id="panel0">
+    <div class="card">
+      <div class="card-title">
+        <div class="icon" style="background:rgba(59,130,246,0.15)"></div>
+        Import File Survey
+      </div>
+      <div class="drop-zone" id="dropZone">
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" onchange="handleFile(event)"/>
+        <div class="drop-icon"></div>
+        <div class="drop-title">Drop file di sini atau klik untuk browse</div>
+        <div class="drop-sub">Drag & drop file survey kamu</div>
+        <div class="drop-formats">
+          <span class="fmt-badge">.xlsx</span>
+          <span class="fmt-badge">.xls</span>
+          <span class="fmt-badge">.csv</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <div class="icon" style="background:rgba(16,185,129,0.15)"></div>
+        Format yang Diharapkan
+      </div>
+      <div class="alert alert-info">
+        Pastikan file kamu memiliki kolom: <strong>No, NIM, Nama</strong>, diikuti kolom skill (nilai 0/1/2), dan kolom MBTI (<strong>E/I, S/N, T/F, J/P</strong>).
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>No</th><th>NIM</th><th>Nama</th>
+            <th>Skill 1</th><th>Skill 2</th><th>...</th>
+            <th>E/I</th><th>S/N</th><th>T/F</th><th>J/P</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td>1</td><td class="td-nim">13323001</td><td class="td-name">Nama Mahasiswa</td>
+              <td><span class="skill-2">2</span></td>
+              <td><span class="skill-1">1</span></td>
+              <td class="skill-0">—</td>
+              <td><span class="mbti-chip">I</span></td>
+              <td><span class="mbti-chip">N</span></td>
+              <td><span class="mbti-chip">T</span></td>
+              <td><span class="mbti-chip">J</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PANEL 1: REVIEW ─── -->
+  <div class="panel" id="panel1">
+    <div id="statsRow" class="stats-row"></div>
+    
+    <!-- Pre-Assignment Controls -->
+    <div class="card">
+      <div class="card-title">
+        <div class="icon" style="background:rgba(139,92,246,0.15)"></div>
+        Pre-Assignment Groups <span class="chip chip-purple" style="margin-left:8px;">Opsional</span>
+      </div>
+      <div class="alert alert-info">
+        Anda bisa assign mahasiswa ke kelompok tertentu sebelum run GA. Kelompok yang sudah lengkap (4 orang) akan di-LOCK dan tidak diubah oleh algoritma.
+      </div>
+      <div class="pre-assign-controls">
+        <span class="selected-count"><span id="selectedCount">0</span> mahasiswa dipilih</span>
+        <button class="btn btn-secondary" onclick="clearSelection()">Clear Selection</button>
+        <input type="text" id="groupNameInput" placeholder="Nama Kelompok (e.g., A1)" />
+        <button class="btn btn-primary" onclick="assignSelectedToGroup()">Assign ke Kelompok</button>
+        <button class="btn btn-secondary" onclick="removeSelectedFromGroups()">Remove dari Kelompok</button>
+        <button class="btn btn-secondary" onclick="selectUnassigned()">Pilih yang Belum Assigned</button>
+        <button class="btn btn-danger" onclick="clearAllGroups()" style="margin-left:auto;">Clear All Groups</button>
+      </div>
+      <div id="groupsSummary" class="groups-summary" style="display:none;"></div>
+    </div>
+    
+    <div class="card">
+      <div class="card-title">
+        <div class="icon" style="background:rgba(6,182,212,0.15)"></div>
+        Data Preview & Cleaning Report
+        <div style="margin-left:auto;display:flex;gap:8px;">
+          <div class="search-wrap">
+            <input class="search-box" id="searchInput" placeholder="Cari nama / NIM..." oninput="renderTable()"/>
+          </div>
+          <button class="btn btn-secondary" onclick="exportClean()">Export CSV</button>
+        </div>
+      </div>
+      <div id="cleanAlert"></div>
+      <div class="tbl-wrap" style="max-height:520px;overflow-y:auto;">
+        <table id="dataTable">
+          <thead id="tableHead"></thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PANEL 2: RANDOMISASI ─── -->
+  <div class="panel" id="panel2">
+    <div class="card">
+      <div class="card-title">
+        <div class="icon" style="background:rgba(245,158,11,0.15)"></div>
+        Randomisasi Data Kosong <span class="chip chip-orange" style="margin-left:8px;">Opsional</span>
+      </div>
+      <div class="alert alert-warn">
+        Fitur ini mengisi data yang kosong (NaN) dengan nilai acak. Gunakan hanya untuk testing performa algoritma, <strong>bukan untuk data final</strong>.
+      </div>
+
+      <div class="random-controls">
+        <div class="form-group">
+          <span class="form-label">Target Filled (%)</span>
+          <div class="range-wrap">
+            <input type="range" min="10" max="100" value="80" id="fillPct" oninput="document.getElementById('fillPctVal').textContent=this.value+'%'"/>
+            <span class="range-val" id="fillPctVal">80%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Prob. Skill = 2</span>
+          <div class="range-wrap">
+            <input type="range" min="10" max="60" value="30" id="prob2" oninput="document.getElementById('prob2Val').textContent=this.value+'%'"/>
+            <span class="range-val" id="prob2Val">30%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Overconfident Seed</span>
+          <div class="range-wrap">
+            <input type="range" min="0" max="5" value="2" id="overconf" oninput="document.getElementById('overconfVal').textContent=this.value+' org'"/>
+            <span class="range-val" id="overconfVal">2 org</span>
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="randomize()">Randomize</button>
+        <button class="btn btn-danger" onclick="resetRandom()">Reset</button>
+      </div>
+
+      <div id="randomLog" class="log-box" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <div class="icon" style="background:rgba(245,158,11,0.15)"></div>
+        Preview Setelah Randomisasi
+      </div>
+      <div class="tbl-wrap" style="max-height:400px;overflow-y:auto;">
+        <table id="randTable">
+          <thead id="randHead"></thead>
+          <tbody id="randBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PANEL 3: ALGO ─── -->
+  <div class="panel" id="panel3">
+    <div class="card">
+      <div class="card-title">
+        <div class="icon" style="background:rgba(59,130,246,0.15)"></div>
+        Konfigurasi Genetic Algorithm
+      </div>
+      <div class="settings-grid">
+        <div class="form-group">
+          <span class="form-label">Ukuran Tim</span>
+          <div class="range-wrap">
+            <input type="range" min="3" max="6" value="4" id="teamSize" oninput="updateTeamPreview()"/>
+            <span class="range-val" id="teamSizeVal">4 orang</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Ukuran Populasi</span>
+          <div class="range-wrap">
+            <input type="range" min="50" max="500" step="50" value="200" id="popSize" oninput="document.getElementById('popSizeVal').textContent=this.value"/>
+            <span class="range-val" id="popSizeVal">200</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Generasi Maksimum</span>
+          <div class="range-wrap">
+            <input type="range" min="100" max="2000" step="100" value="500" id="maxGen" oninput="document.getElementById('maxGenVal').textContent=this.value"/>
+            <span class="range-val" id="maxGenVal">500</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Crossover Rate</span>
+          <div class="range-wrap">
+            <input type="range" min="50" max="95" value="85" id="crossRate" oninput="document.getElementById('crossRateVal').textContent=(this.value/100).toFixed(2)"/>
+            <span class="range-val" id="crossRateVal">0.85</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Mutation Rate</span>
+          <div class="range-wrap">
+            <input type="range" min="1" max="30" value="10" id="mutRate" oninput="document.getElementById('mutRateVal').textContent=(this.value/100).toFixed(2)"/>
+            <span class="range-val" id="mutRateVal">0.10</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <span class="form-label">Elitisme (%)</span>
+          <div class="range-wrap">
+            <input type="range" min="1" max="20" value="5" id="eliteRate" oninput="document.getElementById('eliteRateVal').textContent=this.value+'%'"/>
+            <span class="range-val" id="eliteRateVal">5%</span>
+          </div>
+        </div>
+      </div>
+      <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
+        <div class="settings-grid">
+          <div class="form-group">
+            <span class="form-label">Bobot Skill (α)</span>
+            <div class="range-wrap">
+              <input type="range" min="30" max="80" value="55" id="wSkill" oninput="updateWeights()"/>
+              <span class="range-val" id="wSkillVal">0.55</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Bobot MBTI (β)</span>
+            <div class="range-wrap">
+              <input type="range" min="5" max="40" value="20" id="wMbti" oninput="updateWeights()"/>
+              <span class="range-val" id="wMbtiVal">0.20</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Bobot Balance (γ)</span>
+            <span class="range-val" id="wBalVal" style="margin-top:6px;">0.25</span>
+          </div>
+          <div class="form-group">
+            <span class="form-label">Noise Ensemble Runs</span>
+            <div class="range-wrap">
+              <input type="range" min="1" max="30" value="20" id="ensembleRuns" oninput="document.getElementById('ensembleRunsVal').textContent=this.value"/>
+              <span class="range-val" id="ensembleRunsVal">20</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <div class="icon" style="background:rgba(139,92,246,0.15)"></div>
+        Performance Mode
+      </div>
+      <div style="display:flex;gap:16px;margin-top:12px;flex-wrap:wrap;">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="radio" name="perfMode" value="standard" checked onchange="setPerfMode('standard')"/>
+          <span>Standard (Slower, More Validation)</span>
+        </label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer;">
+          <input type="radio" name="perfMode" value="optimized" onchange="setPerfMode('optimized')"/>
+          <span>Optimized (3-6x Faster)</span>
+        </label>
+      </div>
+      <div class="alert alert-info" style="margin-top:12px;font-size:12px;">
+        <strong>Optimized mode</strong> uses advanced algorithms for faster execution (3-6x speedup). Results are identical to Standard mode. Use for larger datasets (>50 students) or when time is critical.
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="teamPreview" style="margin-bottom:16px;color:var(--muted);font-size:13px;"></div>
+      <button class="btn btn-primary" id="runBtn" onclick="runGASafe()" style="width:100%;justify-content:center;padding:16px;font-size:16px;">
+        Jalankan Genetic Algorithm
+      </button>
+      <div id="progressSection" style="display:none;margin-top:20px;">
+        <div class="progress-labels">
+          <span id="progressLabel">Menginisialisasi...</span>
+          <span id="progressPct">0%</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+        <div class="log-box" id="algoLog"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PANEL 4: RESULTS ─── -->
+  <div class="panel" id="panel4">
+    <div id="globalScores" class="global-scores"></div>
+    
+    <!-- Help Section -->
+    <div class="card" style="background:rgba(59,130,246,0.05);border-left:3px solid var(--accent);">
+      <div style="font-size:13px;color:var(--muted);line-height:1.6;">
+        <strong style="color:var(--text);">Cara Membaca Hasil:</strong><br>
+        • <strong>Skor Global</strong>: Hover mouse di setiap kartu untuk melihat penjelasan detail<br>
+        • <strong>Skor Tim</strong>: "Skill" = distribusi skill dalam tim (85% priority) + diversity Kelompok Keahlian (15%), "MBTI" = kecocokan kepribadian<br>
+        • <strong>Skill Coverage</strong>: Menampilkan 3 skill terkuat (Mekanik, Elektronik, dst). Rata-rata skill level tim untuk skill tersebut<br>
+        • <strong>Kelompok Keahlian</strong>: Menunjukkan diversity subjurusan dalam tim (berapa banyak KK yang terwakili)<br>
+        • <strong>Bar Warna</strong>: Hijau = Kuat (>65%), Orange = Cukup (35-65%), Merah = Lemah (<35%)
+      </div>
+    </div>
+    
+    <!-- Skill Abbreviation Legend (Collapsible) -->
+    <details class="card" style="cursor:pointer;">
+      <summary style="font-weight:600;color:var(--text);padding:12px 0;user-select:none;">
+        Daftar Singkatan (klik untuk expand)
+      </summary>
+      <div style="margin-top:8px;">
+        <div style="font-weight:600;color:var(--text);margin-bottom:6px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Kelompok Keahlian</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:16px;font-size:12px;color:var(--muted);">
+          <div><strong style="color:var(--text);">IK</strong> = Instrumentasi dan Kontrol</div>
+          <div><strong style="color:var(--text);">FB</strong> = Fisika Bangunan</div>
+          <div><strong style="color:var(--text);">PM</strong> = Proses Material</div>
+          <div><strong style="color:var(--text);">E</strong> = Energi</div>
+          <div><strong style="color:var(--text);">I</strong> = Integrator</div>
+        </div>
+        <div style="font-weight:600;color:var(--text);margin-bottom:6px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;">Skills</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;font-size:12px;color:var(--muted);">
+          <div><strong style="color:var(--text);">M</strong> = Mekanik</div>
+          <div><strong style="color:var(--text);">El</strong> = Elektronik</div>
+          <div><strong style="color:var(--text);">II</strong> = Instrumentasi Industri</div>
+          <div><strong style="color:var(--text);">K</strong> = Komputasi</div>
+          <div><strong style="color:var(--text);">Ma</strong> = Material</div>
+          <div><strong style="color:var(--text);">S</strong> = Simulasi</div>
+          <div><strong style="color:var(--text);">MP</strong> = Manajemen Proyek</div>
+        </div>
+      </div>
+    </details>
+    
+    <div class="card">
+      <div class="card-title">
+        Hasil Pembentukan Tim
+        <div style="margin-left:auto;display:flex;gap:8px;">
+          <button class="btn btn-secondary" onclick="exportResults()">⬇ Export Excel</button>
+        </div>
+      </div>
+      <div id="teamGrid" class="team-grid"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════════
+let rawData = [];
+let cleanData = [];
+let workingData = [];
+let gaResults = null;
+let originalRawData = [];
+
+// Pre-assignment system
+let selectedStudents = new Set();  // Set of indices
+let preAssignedGroups = {};  // {groupName: [index1, index2, ...]}
+
+// Performance Mode Configuration
+let PERFORMANCE_MODE = 'standard'; // 'standard' or 'optimized'
+const DEBUG_MODE = true; // Set to false in production to skip validation checks
+
+
+// Kelompok Keahlian (subjurusan/peminatan) - 5 columns
+const EXPERTISE_COLS = ['Instrumentasi dan Kontrol','Fisika Bangunan','Proses Material','Energi','Integrator'];
+// Skills (kemampuan konkrit) - 7 columns  
+const SKILL_COLS = ['Mekanik','Elektronik','Instrumentasi Industri','Komputasi','Material','Simulasi','Manajemen Proyek'];
+// All columns combined (for backward compatibility)
+const ALL_COLS = [...EXPERTISE_COLS, ...SKILL_COLS];
+const MBTI_DIMS = ['E/I','S/N','T/F','J/P'];
+const TEAM_COLORS = [
+  ['#3b82f6','#1d4ed8'],['#10b981','#065f46'],['#f59e0b','#92400e'],
+  ['#8b5cf6','#4c1d95'],['#ef4444','#991b1b'],['#06b6d4','#0e7490'],
+  ['#ec4899','#9d174d'],['#14b8a6','#134e4a'],['#f97316','#9a3412'],
+  ['#84cc16','#3f6212'],['#a855f7','#581c87'],['#22d3ee','#0c4a6e'],
+  ['#fb7185','#9f1239'],['#34d399','#064e3b'],['#fbbf24','#78350f'],
+  ['#60a5fa','#1e3a5f'],['#a78bfa','#2e1065'],['#4ade80','#14532d'],
+  ['#f87171','#7f1d1d'],['#38bdf8','#0c4a6e'],
+];
+
+// ═══════════════════════════════════════════════════════════════
+//  NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function goStep(idx){
+  // Validation: don't allow skipping steps
+  if(idx>0 && cleanData.length===0) {
+    showError('Import data terlebih dahulu di Step 1');
+    return;
+  }
+  if(idx>=3 && workingData.length===0 && cleanData.length===0) {
+    showError('Data belum tersedia');
+    return;
+  }
+  
+  document.querySelectorAll('.panel').forEach((p,i)=>p.classList.toggle('active',i===idx));
+  document.querySelectorAll('.step-btn').forEach((b,i)=>{
+    b.classList.remove('active');
+    if(i<idx) b.classList.add('done'); else b.classList.remove('done');
+    if(i===idx) b.classList.add('active');
+  });
+  if(idx===1) renderTable();
+  if(idx===2) renderRandTable();
+  if(idx===3) updateTeamPreview();
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PERFORMANCE MODE
+// ═══════════════════════════════════════════════════════════════
+function setPerfMode(mode) {
+  PERFORMANCE_MODE = mode;
+  console.log(`[PERF] Performance mode set to: ${mode}`);
+  const modeDisplay = mode === 'optimized' ? 'OPTIMIZED' : 'STANDARD';
+  console.log(`[PERF] Expected speedup: ${mode === 'optimized' ? '3-6x faster' : 'baseline'}`);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ERROR HANDLING & VALIDATION (Must be before handleFile)
+// ═══════════════════════════════════════════════════════════════
+function showError(message) {
+  const toast = document.createElement('div');
+  toast.className = 'error-toast';
+  toast.innerHTML = `
+    <div class="alert alert-danger">
+      <button onclick="this.parentElement.parentElement.remove()">✕</button>
+      <strong>Error:</strong> ${message}
+    </div>
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 5000);
+}
+
+function validateFile(file) {
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if(file.size > maxSize) {
+    throw new Error('File terlalu besar (maksimum 10MB)');
+  }
+  
+  const validExts = ['.xlsx', '.xls', '.csv'];
+  if(!validExts.some(ext => file.name.toLowerCase().endsWith(ext))) {
+    throw new Error('Format file tidak didukung. Gunakan .xlsx, .xls, atau .csv');
+  }
+  
+  return true;
+}
+
+function validateImportedData(rows) {
+  if(!rows || rows.length === 0) {
+    throw new Error('File kosong atau tidak valid');
+  }
+  
+  const requiredCols = ['No', 'NIM', 'Nama'];
+  const sampleRow = rows[0];
+  const missing = requiredCols.filter(c => !(c in sampleRow));
+  
+  if(missing.length > 0) {
+    throw new Error(`Kolom wajib tidak ditemukan: ${missing.join(', ')}`);
+  }
+  
+  // Check if at least some rows have names
+  const withNames = rows.filter(r => r.Nama && String(r.Nama).trim() !== '');
+  if(withNames.length === 0) {
+    throw new Error('Tidak ada data mahasiswa valid (kolom Nama kosong semua)');
+  }
+  
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  DRAG & DROP
+// ═══════════════════════════════════════════════════════════════
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{
+  e.preventDefault();dz.classList.remove('drag');
+  handleFile({target:{files:e.dataTransfer.files}});
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  FILE HANDLING
+// ═══════════════════════════════════════════════════════════════
+function handleFile(e){
+  console.log('[handleFile] Called', e);
+  const file = e.target.files[0];
+  if(!file) {
+    console.log('[handleFile] No file selected');
+    return;
+  }
+  
+  console.log('[handleFile] File selected:', file.name, file.size, 'bytes');
+  
+  try {
+    validateFile(file);
+    console.log('[handleFile] File validation passed');
+  } catch(err) {
+    console.error('[handleFile] Validation error:', err);
+    showError(err.message);
+    e.target.value = ''; // Reset input
+    return;
+  }
+  
+  if (typeof XLSX === 'undefined') {
+    showError('Library XLSX tidak tersedia. Refresh halaman atau buka via HTTP server.');
+    console.error('[handleFile] XLSX library not available');
+    return;
+  }
+  
+  console.log('[handleFile] Starting FileReader...');
+  const reader = new FileReader();
+  reader.onload = ev => {
+    console.log('[handleFile] FileReader loaded, parsing...');
+    try{
+      let rows;
+      if(file.name.endsWith('.csv')){
+        console.log('[handleFile] Parsing CSV...');
+        rows = parseCSV(ev.target.result);
+      } else {
+        console.log('[handleFile] Parsing Excel...');
+        const wb = XLSX.read(ev.target.result,{type:'array'});
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws,{defval:null});
+      }
+      
+      console.log('[handleFile] Parsed rows:', rows.length);
+      validateImportedData(rows);
+      console.log('[handleFile] Data validation passed');
+      processRaw(rows);
+      console.log('[handleFile] Data processed, navigating to Step 2');
+      goStep(1);
+    } catch(err){ 
+      showError(err.message || 'Gagal membaca file');
+      console.error('[Import Error]', err);
+    }
+  };
+  
+  reader.onerror = (err) => {
+    console.error('[handleFile] FileReader error:', err);
+    showError('Gagal membaca file. Pastikan file tidak corrupt.');
+  };
+  
+  console.log('[handleFile] Reading file...');
+  file.name.endsWith('.csv') ? reader.readAsText(file) : reader.readAsArrayBuffer(file);
+}
+
+function parseCSV(text){
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h=>h.trim().replace(/"/g,''));
+  return lines.slice(1).map(line=>{
+    const vals = line.split(',').map(v=>v.trim().replace(/"/g,''));
+    const obj={};
+    headers.forEach((h,i)=>obj[h]=vals[i]||null);
+    return obj;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PROCESSING & CLEANING
+// ═══════════════════════════════════════════════════════════════
+function processRaw(rows){
+  // Filter rows yang punya nama
+  rawData = rows.filter(r => r.Nama && String(r.Nama).trim() !== '' && String(r.Nama) !== 'null');
+
+  // Detect skill & mbti cols from actual file
+  const sampleKeys = Object.keys(rawData[0]||{});
+  const detectedSkills = sampleKeys.filter(k => ALL_COLS.includes(k));
+  const detectedMbti   = sampleKeys.filter(k => MBTI_DIMS.includes(k));
+
+  let naCount=0, fixedCount=0;
+  cleanData = rawData.map(row=>{
+    const out = {
+      No:   row.No||'',
+      NIM:  row.NIM ? String(row.NIM).split('.')[0] : '',
+      Nama: String(row.Nama||'').trim(),
+    };
+    // Skill cols
+    detectedSkills.forEach(col=>{
+      const v = row[col];
+      if(v===null||v===undefined||v===''||isNaN(Number(v))){
+        out[col]=0; naCount++;fixedCount++;
+      } else {
+        out[col]=Math.min(2,Math.max(0,Math.round(Number(v))));
+      }
+    });
+    // Fill missing skill cols with 0
+    ALL_COLS.forEach(col=>{
+      if(!(col in out)) out[col]=0;
+    });
+    // MBTI cols
+    detectedMbti.forEach(col=>{
+      out[col] = (row[col]&&String(row[col]).trim().toUpperCase())||null;
+    });
+    MBTI_DIMS.forEach(col=>{
+      if(!(col in out)) out[col]=null;
+    });
+    return out;
+  });
+
+  originalRawData = JSON.parse(JSON.stringify(cleanData));
+  workingData = JSON.parse(JSON.stringify(cleanData));
+
+  // Stats
+  const filled = cleanData.filter(r=>ALL_COLS.some(c=>r[c]>0));
+  const mbtiOk = cleanData.filter(r=>MBTI_DIMS.every(d=>r[d]));
+
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--accent)">${cleanData.length}</div>
+      <div class="stat-label">Total Mahasiswa</div>
+      <div class="stat-sub">setelah filter nama kosong</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--green)">${filled.length}</div>
+      <div class="stat-label">Sudah Isi Survey</div>
+      <div class="stat-sub">${Math.round(filled.length/cleanData.length*100)}% dari total</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--orange)">${cleanData.length-filled.length}</div>
+      <div class="stat-label">Belum Isi Survey</div>
+      <div class="stat-sub">akan di-treat sebagai 0</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--purple)">${mbtiOk.length}</div>
+      <div class="stat-label">MBTI Lengkap</div>
+      <div class="stat-sub">${cleanData.length-mbtiOk.length} belum isi MBTI</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" style="color:var(--red)">${naCount}</div>
+      <div class="stat-label">Cell Dikosongkan</div>
+      <div class="stat-sub">otomatis diisi 0</div>
+    </div>
+  `;
+
+  const ca = document.getElementById('cleanAlert');
+  ca.innerHTML = naCount>0
+    ? `<div class="alert alert-warn">Ditemukan <strong>${naCount} cell kosong</strong> → otomatis diisi <code>0</code>. ${cleanData.length-filled.length} mahasiswa belum mengisi survey apapun.</div>`
+    : `<div class="alert alert-ok">Semua data bersih, tidak ada cell kosong yang perlu diperbaiki.</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  TABLE RENDER
+// ═══════════════════════════════════════════════════════════════
+function renderTable(){
+  if(!cleanData.length) return;
+  const q = (document.getElementById('searchInput')||{}).value?.toLowerCase()||'';
+  const rows = cleanData.filter(r=>
+    r.Nama.toLowerCase().includes(q)||String(r.NIM).includes(q)
+  );
+
+  // Head - add checkbox column
+  document.getElementById('tableHead').innerHTML = `<tr>
+    <th class="checkbox-col">☑</th>
+    <th>#</th><th>NIM</th><th>Nama</th>
+    ${ALL_COLS.map(c=>`<th title="${c}">${c.split(' ').map(w=>w[0]).join('')}</th>`).join('')}
+    <th>MBTI</th><th>Status</th><th>Kelompok</th>
+  </tr>`;
+
+  // Body - add checkboxes
+  document.getElementById('tableBody').innerHTML = rows.map((r,i)=>{
+    const actualIndex = cleanData.indexOf(r);
+    const isSelected = selectedStudents.has(actualIndex);
+    const groupName = r.Kelompok || null;
+    const isAssigned = !!groupName;
+    
+    const hasSkill = ALL_COLS.some(c=>r[c]>0);
+    const hasMbti  = MBTI_DIMS.every(d=>r[d]);
+    const total = ALL_COLS.reduce((s,c)=>s+r[c],0);
+    const mbtiStr = hasMbti ? MBTI_DIMS.map(d=>r[d]).join('') : null;
+    
+    const rowClass = isSelected ? 'selected-row' : (isAssigned ? 'assigned-row' : '');
+    
+    return `<tr class="${rowClass}">
+      <td class="checkbox-col">
+        <input type="checkbox" class="student-checkbox" 
+          ${isAssigned ? 'disabled' : ''}
+          ${isSelected ? 'checked' : ''}
+          onchange="toggleStudentSelection(${actualIndex})" />
+      </td>
+      <td style="color:var(--muted);font-size:11px;">${r.No||i+1}</td>
+      <td class="td-nim">${r.NIM}</td>
+      <td class="td-name">${r.Nama}</td>
+      ${ALL_COLS.map(c=>`<td>${skillBadge(r[c])}</td>`).join('')}
+      <td>${hasMbti?`<span class="mbti-chip">${mbtiStr}</span>`:`<span class="mbti-missing">—</span>`}</td>
+      <td>${hasSkill
+        ? `<span class="chip chip-green">✓ Σ${total}</span>`
+        : `<span class="chip chip-red">Kosong</span>`}</td>
+      <td>${groupName ? `<span class="chip chip-purple">${groupName}</span>` : `<span style="color:var(--muted);font-size:11px;">—</span>`}</td>
+    </tr>`;
+  }).join('');
+  
+  // Render groups summary
+  renderGroupsSummary();
+}
+
+function skillBadge(v){
+  if(v===2) return `<span class="skill-2">2</span>`;
+  if(v===1) return `<span class="skill-1">1</span>`;
+  return `<span class="skill-0">·</span>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PRE-ASSIGNMENT SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+function toggleStudentSelection(index) {
+  if(selectedStudents.has(index)) {
+    selectedStudents.delete(index);
+  } else {
+    selectedStudents.add(index);
+  }
+  updateSelectedCount();
+  renderTable();
+}
+
+function clearSelection() {
+  selectedStudents.clear();
+  updateSelectedCount();
+  renderTable();
+}
+
+function updateSelectedCount() {
+  document.getElementById('selectedCount').textContent = selectedStudents.size;
+}
+
+function selectUnassigned() {
+  selectedStudents.clear();
+  cleanData.forEach((student, idx) => {
+    if(!student.Kelompok) {
+      selectedStudents.add(idx);
+    }
+  });
+  updateSelectedCount();
+  renderTable();
+}
+
+function assignSelectedToGroup() {
+  if(selectedStudents.size === 0) {
+    alert('Pilih mahasiswa terlebih dahulu!');
+    return;
+  }
+  
+  const groupName = document.getElementById('groupNameInput').value.trim();
+  if(!groupName) {
+    alert('Masukkan nama kelompok!');
+    return;
+  }
+  
+  // Assign to all three data arrays
+  selectedStudents.forEach(idx => {
+    cleanData[idx].Kelompok = groupName;
+    workingData[idx].Kelompok = groupName;
+    originalRawData[idx].Kelompok = groupName;
+  });
+  
+  // Update preAssignedGroups
+  if(!preAssignedGroups[groupName]) {
+    preAssignedGroups[groupName] = [];
+  }
+  selectedStudents.forEach(idx => {
+    if(!preAssignedGroups[groupName].includes(idx)) {
+      preAssignedGroups[groupName].push(idx);
+    }
+  });
+  
+  // Clear selection
+  selectedStudents.clear();
+  document.getElementById('groupNameInput').value = '';
+  updateSelectedCount();
+  renderTable();
+}
+
+function removeSelectedFromGroups() {
+  if(selectedStudents.size === 0) {
+    alert('Pilih mahasiswa terlebih dahulu!');
+    return;
+  }
+  
+  // Remove from all three data arrays
+  selectedStudents.forEach(idx => {
+    const groupName = cleanData[idx].Kelompok;
+    delete cleanData[idx].Kelompok;
+    delete workingData[idx].Kelompok;
+    delete originalRawData[idx].Kelompok;
+    
+    // Remove from preAssignedGroups
+    if(groupName && preAssignedGroups[groupName]) {
+      preAssignedGroups[groupName] = preAssignedGroups[groupName].filter(i => i !== idx);
+      if(preAssignedGroups[groupName].length === 0) {
+        delete preAssignedGroups[groupName];
+      }
+    }
+  });
+  
+  selectedStudents.clear();
+  updateSelectedCount();
+  renderTable();
+}
+
+function deleteGroup(groupName) {
+  if(!confirm(`Hapus kelompok "${groupName}"?`)) return;
+  
+  // Remove from all data arrays
+  cleanData.forEach((student, idx) => {
+    if(student.Kelompok === groupName) {
+      delete cleanData[idx].Kelompok;
+      delete workingData[idx].Kelompok;
+      delete originalRawData[idx].Kelompok;
+    }
+  });
+  
+  delete preAssignedGroups[groupName];
+  renderTable();
+}
+
+function clearAllGroups() {
+  if(!confirm('Hapus semua kelompok pre-assigned?')) return;
+  
+  cleanData.forEach((student, idx) => {
+    delete cleanData[idx].Kelompok;
+    delete workingData[idx].Kelompok;
+    delete originalRawData[idx].Kelompok;
+  });
+  
+  preAssignedGroups = {};
+  selectedStudents.clear();
+  updateSelectedCount();
+  renderTable();
+}
+
+function renderGroupsSummary() {
+  const groups = {};
+  cleanData.forEach((student, idx) => {
+    if(student.Kelompok) {
+      if(!groups[student.Kelompok]) {
+        groups[student.Kelompok] = [];
+      }
+      groups[student.Kelompok].push({idx, name: student.Nama});
+    }
+  });
+  
+  const groupNames = Object.keys(groups);
+  if(groupNames.length === 0) {
+    document.getElementById('groupsSummary').style.display = 'none';
+    return;
+  }
+  
+  document.getElementById('groupsSummary').style.display = 'block';
+  
+  // Get team size from params or default to 4
+  const teamSize = parseInt(document.getElementById('teamSize')?.value || 4);
+  
+  const lockedGroups = groupNames.filter(g => groups[g].length === teamSize);
+  const partialGroups = groupNames.filter(g => groups[g].length < teamSize);
+  
+  let html = '<h4>Pre-Assigned Groups:</h4>';
+  
+  if(lockedGroups.length > 0) {
+    html += `<div style="margin-bottom:10px;"><strong style="color:var(--green);">${lockedGroups.length} kelompok LOCKED (akan dipertahankan):</strong></div>`;
+    lockedGroups.forEach(groupName => {
+      const members = groups[groupName];
+      html += `<div class="group-item locked">
+        <span class="group-item-name">${groupName}</span>
+        <span class="group-item-members">${members.length} anggota: ${members.map(m => m.name).join(', ')}</span>
+        <button class="group-item-delete" onclick="deleteGroup('${groupName}')">Delete</button>
+      </div>`;
+    });
+  }
+  
+  if(partialGroups.length > 0) {
+    html += `<div style="margin:15px 0 10px;"><strong style="color:var(--orange);">${partialGroups.length} kelompok PARTIAL (akan dilengkapi oleh GA):</strong></div>`;
+    partialGroups.forEach(groupName => {
+      const members = groups[groupName];
+      const needed = teamSize - members.length;
+      html += `<div class="group-item partial">
+        <span class="group-item-name">${groupName}</span>
+        <span class="group-item-members">${members.length}/${teamSize} anggota (butuh ${needed} lagi): ${members.map(m => m.name).join(', ')}</span>
+        <button class="group-item-delete" onclick="deleteGroup('${groupName}')">Delete</button>
+      </div>`;
+    });
+  }
+  
+  document.getElementById('groupsSummary').innerHTML = html;
+}
+
+function analyzePreAssignedGroups(data, teamSize) {
+  const groups = {};
+  const assigned = new Set();
+  
+  data.forEach((student, idx) => {
+    if(student.Kelompok) {
+      if(!groups[student.Kelompok]) {
+        groups[student.Kelompok] = [];
+      }
+      groups[student.Kelompok].push(idx);
+      assigned.add(idx);
+    }
+  });
+  
+  const groupNames = Object.keys(groups);
+  const lockedGroups = [];
+  const partialGroups = [];
+  
+  groupNames.forEach(id => {
+    const members = groups[id];
+    if(members.length === teamSize) {
+      lockedGroups.push({id, members});
+    } else if(members.length > 0 && members.length < teamSize) {
+      partialGroups.push({id, members, needed: teamSize - members.length});
+    }
+  });
+  
+  return {
+    hasPreAssigned: groupNames.length > 0,
+    lockedGroups,
+    partialGroups,
+    unassignedCount: data.length - assigned.size,
+    assignedIndices: assigned
+  };
+}
+
+function combineLockedAndOptimized(lockedGroups, subsetPartition, studentsToOptimize, teamSize) {
+  // lockedGroups: array of {id, members: [fullIndex1, fullIndex2, ...]}
+  // subsetPartition: array of arrays (teams), indices refer to studentsToOptimize array
+  // studentsToOptimize: array mapping subset index -> full data index
+  
+  const result = [];
+  
+  // Add locked groups first
+  lockedGroups.forEach(g => {
+    result.push([...g.members]);
+  });
+  
+  // Convert subset partition indices back to full indices and add to result
+  subsetPartition.forEach(team => {
+    const fullTeam = team.map(subsetIdx => studentsToOptimize[subsetIdx]);
+    result.push(fullTeam);
+  });
+  
+  return result;
+}
+
+// ═══════════════════════════════════════════════════════════════
+
+function renderRandTable(){
+  if(!workingData.length) return;
+  document.getElementById('randHead').innerHTML = document.getElementById('tableHead').innerHTML||`<tr>
+    <th>#</th><th>NIM</th><th>Nama</th>
+    ${ALL_COLS.map(c=>`<th title="${c}">${c.split(' ').map(w=>w[0]).join('')}</th>`).join('')}
+    <th>MBTI</th>
+  </tr>`;
+
+  document.getElementById('randBody').innerHTML = workingData.map((r,i)=>{
+    const hasMbti = MBTI_DIMS.every(d=>r[d]);
+    const mbtiStr = hasMbti ? MBTI_DIMS.map(d=>r[d]).join('') : '—';
+    return `<tr>
+      <td style="color:var(--muted);font-size:11px;">${r.No||i+1}</td>
+      <td class="td-nim">${r.NIM}</td>
+      <td class="td-name">${r.Nama}</td>
+      ${ALL_COLS.map(c=>`<td>${skillBadge(r[c])}</td>`).join('')}
+      <td><span class="${hasMbti?'mbti-chip':'mbti-missing'}">${mbtiStr}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RANDOMIZE
+// ═══════════════════════════════════════════════════════════════
+function randomize(){
+  const fillPct  = parseInt(document.getElementById('fillPct').value)/100;
+  const prob2    = parseInt(document.getElementById('prob2').value)/100;
+  const overconf = parseInt(document.getElementById('overconf').value);
+
+  workingData = JSON.parse(JSON.stringify(originalRawData));
+  const log = [];
+  const MBTI_OPTS = {
+    'E/I':['E','I'], 'S/N':['S','N'], 'T/F':['T','F'], 'J/P':['J','P']
+  };
+
+  // Pilih siapa yang di-randomize (yang belum isi)
+  const unfilled = workingData.filter(r=>ALL_COLS.every(c=>r[c]===0));
+  const toFill = Math.floor(unfilled.length * fillPct);
+  const chosen = shuffle([...unfilled]).slice(0, toFill);
+  const chosenSet = new Set(chosen.map(r=>r.NIM));
+
+  // Overconfident seeds
+  const overconfSet = new Set(shuffle([...chosen]).slice(0,overconf).map(r=>r.NIM));
+
+  workingData.forEach(r=>{
+    if(!chosenSet.has(r.NIM)) return;
+    const isOverconf = overconfSet.has(r.NIM);
+
+    if(isOverconf){
+      // Isi semua skill = 2
+      ALL_COLS.forEach(c=>r[c]=2);
+      log.push(`<span class="log-warn">[OVERCONF] ${r.Nama}: semua skill=2</span>`);
+    } else {
+      // Random subset skill
+      const nSkills = 2 + Math.floor(Math.random()*5);
+      const chosen2 = shuffle([...ALL_COLS]).slice(0,nSkills);
+      ALL_COLS.forEach(c=>r[c]=0);
+      chosen2.forEach(c=>r[c] = Math.random()<prob2 ? 2 : 1);
+      log.push(`<span class="log-ok">[FILL] ${r.Nama}: ${chosen2.length} skill diisi</span>`);
+    }
+
+    // MBTI kalau kosong - only fill missing dimensions
+    if(!MBTI_DIMS.every(d=>r[d])){
+      MBTI_DIMS.forEach(d=>{
+        if(!r[d]) {  // Only fill if this dimension is empty
+          const opts = MBTI_OPTS[d];
+          r[d]=opts[Math.floor(Math.random()*2)];
+        }
+      });
+    }
+  });
+
+  const logBox = document.getElementById('randomLog');
+  logBox.style.display='block';
+  logBox.innerHTML = `<span class="log-info">Randomisasi selesai. ${toFill} mahasiswa diisi dari ${unfilled.length} yang kosong. ${overconf} overconfident seed.</span>\n` + log.join('\n');
+
+  renderRandTable();
+}
+
+function resetRandom(){
+  workingData = JSON.parse(JSON.stringify(originalRawData));
+  document.getElementById('randomLog').style.display='none';
+  renderRandTable();
+}
+
+function shuffle(arr){
+  for(let i=arr.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [arr[i],arr[j]]=[arr[j],arr[i]];
+  }
+  return arr;
+}
+
+// Wrap GA execution with error handling
+async function runGASafe() {
+  try {
+    await runGA();
+  } catch(err) {
+    console.error('[GA Error]', err);
+    showError(err.message || 'Terjadi kesalahan saat menjalankan algoritma');
+    document.getElementById('runBtn').disabled = false;
+    const progressSection = document.getElementById('progressSection');
+    if(progressSection) progressSection.style.display = 'none';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  WEIGHT UPDATER
+// ═══════════════════════════════════════════════════════════════
+function updateWeights(){
+  const s = parseInt(document.getElementById('wSkill').value);
+  const m = parseInt(document.getElementById('wMbti').value);
+  const b = Math.max(0, 100-s-m);
+  document.getElementById('wSkillVal').textContent=(s/100).toFixed(2);
+  document.getElementById('wMbtiVal').textContent=(m/100).toFixed(2);
+  document.getElementById('wBalVal').textContent=(b/100).toFixed(2);
+}
+
+function updateTeamPreview(){
+  const ts = parseInt(document.getElementById('teamSize').value);
+  document.getElementById('teamSizeVal').textContent=ts+' orang';
+  const n = workingData.length||cleanData.length||0;
+  const nTeams = Math.ceil(n/ts);
+  document.getElementById('teamPreview').innerHTML = n>0
+    ? `<span class="chip chip-blue">${n} mahasiswa</span> <span class="chip chip-blue">÷ ${ts} per tim</span> = <strong style="color:var(--accent)">${nTeams} tim</strong>`
+    : '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  PREPROCESSING: SSW + Z-SCORE + MBTI ENCODE
+// ═══════════════════════════════════════════════════════════════
+function preprocess(data){
+  const MBTI_MAP = {'E':1,'I':0,'N':1,'S':0,'T':1,'F':0,'J':1,'P':0};
+
+  // Step 1: SSW
+  const W = data.map(r=>{
+    const raw = ALL_COLS.map(c=>r[c]||0);
+    const total = raw.reduce((a,b)=>a+b,0);
+    const safeTotal = total === 0 ? 1 : total;
+    return raw.map(v=>v/safeTotal);
+  });
+
+  // Step 2: Z-score column-wise + clip ±2
+  const normalized = [];
+  for(let j=0;j<ALL_COLS.length;j++){
+    const col = W.map(r=>r[j]);
+    const mean = col.reduce((a,b)=>a+b,0)/col.length;
+    const std  = Math.sqrt(col.reduce((a,b)=>a+(b-mean)**2,0)/col.length);
+    const safeStd = std === 0 ? 1e-5 : std;
+    normalized.push(col.map(v=>Math.min(2,Math.max(-2,(v-mean)/safeStd))));
+  }
+  // Transpose back
+  const W_norm = data.map((_,i)=>normalized.map(col=>col[i]));
+
+  // Step 3: MBTI encoding
+  const M = data.map(r=>{
+    return MBTI_DIMS.map((d,di)=>{
+      const dims={0:'E/I',1:'S/N',2:'T/F',3:'J/P'};
+      const v = r[dims[di]];
+      if(!v) return 0.5; // neutral if missing
+      return (MBTI_MAP[v.toUpperCase()]||0);
+    });
+  });
+
+  // Cross-signal inconsistency check
+  const inconsistency = data.map((r,i)=>{
+    const skills = ALL_COLS.map(c=>r[c]||0);
+    const totalSkill = skills.reduce((a,b)=>a+b,0);
+    const mbtiEI = M[i][0]; // 1=E, 0=I
+    const pmScore = r['Manajemen Proyek']||0;
+    let score=0;
+    if(mbtiEI<0.3 && pmScore>=2) score+=1; // Introvert klaim PM expert
+    const allHigh = skills.filter(s=>s>=2).length;
+    if(allHigh>=ALL_COLS.length*0.8) score+=2; // Overconfident
+    return Math.min(1, score/3);
+  });
+
+  return {W_norm, M, inconsistency};
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  FITNESS FUNCTION
+// ═══════════════════════════════════════════════════════════════
+function fitness(partition, W_norm, M, inconsistency, weights){
+  const {wSkill,wMbti,wBal}=weights;
+  let totalFSkill=0, totalFPers=0;
+  const teamStrengths=[];
+  
+  const validTeams = partition.filter(team=>team.length>0);
+
+  validTeams.forEach(team=>{
+    // F_skill: 85% from skills distribution + 15% from KK diversity
+    
+    // Part 1: Skills distribution (SKILL_COLS only) - 85% weight
+    let fSkillDistribution=0;
+    for(let j=0;j<SKILL_COLS.length;j++){
+      const coverage = Math.min(1, team.reduce((s,i)=>s+Math.max(0,W_norm[i][EXPERTISE_COLS.length+j]),0));
+      const maxW = Math.max(...team.map(i=>Math.max(0,W_norm[i][EXPERTISE_COLS.length+j])));
+      const sumW = team.reduce((s,i)=>s+Math.max(0,W_norm[i][EXPERTISE_COLS.length+j]),0)+1e-5;
+      const diversity = 1-(maxW/sumW);
+      fSkillDistribution += coverage + 0.5*diversity;
+    }
+    fSkillDistribution /= SKILL_COLS.length;
+    
+    // Part 2: KK diversity (EXPERTISE_COLS) - 15% weight
+    // Count how many different KK are represented (at least 1 person with value > 0)
+    let uniqueKK = 0;
+    for(let j=0;j<EXPERTISE_COLS.length;j++){
+      const hasKK = team.some(i => (W_norm[i][j] > -1)); // Check if anyone has this KK (normalized value)
+      if(hasKK) uniqueKK++;
+    }
+    // Ideal: 4 out of 5 KK represented. Score: 0-1 range
+    const fKKDiversity = Math.min(1.0, uniqueKK / 4);
+    
+    // Combine: 85% skill distribution + 15% KK diversity
+    const fSkill = (fSkillDistribution * 0.85) + (fKKDiversity * 0.15);
+    totalFSkill += fSkill;
+
+    // F_personality
+    let fPers=0, pairs=0;
+    for(let a=0;a<team.length;a++){
+      for(let b=a+1;b<team.length;b++){
+        const ia=team[a], ib=team[b];
+        const distance = M[ia].reduce((s,v,d)=>s+Math.abs(v-M[ib][d]),0)/4;
+        const compat = distance; // Use distance for complementary matching (higher distance = more complementary)
+        const wi = 1-(inconsistency[ia]*0.7);
+        const wj = 1-(inconsistency[ib]*0.7);
+        fPers += compat*wi*wj;
+        pairs++;
+      }
+    }
+    fPers = pairs>0 ? fPers/pairs : 0;
+    totalFPers += fPers;
+
+    // Team strength for balance
+    const str = team.reduce((s,i)=>s+W_norm[i].reduce((a,b)=>a+Math.max(0,b),0),0);
+    teamStrengths.push(str);
+  });
+
+  const n = validTeams.length;  // Use validTeams.length (already filtered at line 1312)
+  if(n === 0 || teamStrengths.length === 0) return {total:0, fSkill:0, fPers:0, fBal:0};
+  
+  totalFSkill /= n;
+  totalFPers  /= n;
+  const meanStr = teamStrengths.reduce((a,b)=>a+b,0)/teamStrengths.length;
+  const stdStr  = Math.sqrt(teamStrengths.reduce((a,b)=>a+(b-meanStr)**2,0)/teamStrengths.length);
+  const fBal    = Math.max(0, 1-(stdStr/(meanStr+1e-5)));
+
+  return {
+    total: wSkill*totalFSkill + wMbti*totalFPers + wBal*fBal,
+    fSkill: totalFSkill, fPers: totalFPers, fBal
+  };
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  OPTIMIZED FITNESS FUNCTION (OPT-1: Cached W_norm lookups)
+// ═══════════════════════════════════════════════════════════════
+// This version caches W_norm[i][j] lookups to avoid redundant array accesses
+// Performance improvement: ~30-40% faster than original fitness()
+// Results are mathematically identical to the original function
+function fitnessOptimized(partition, W_norm, M, inconsistency, weights){
+  const {wSkill,wMbti,wBal}=weights;
+  let totalFSkill=0, totalFPers=0;
+  const teamStrengths=[];
+  
+  const validTeams = partition.filter(team=>team.length>0);
+
+  validTeams.forEach(team=>{
+    // F_skill: 85% from skills distribution + 15% from KK diversity
+    
+    // Part 1: Skills distribution (SKILL_COLS only) - OPTIMIZED
+    let fSkillDistribution=0;
+    for(let j=0;j<SKILL_COLS.length;j++){
+      // Cache W_norm values for this skill (offset by EXPERTISE_COLS.length)
+      const skillValues = team.map(i => Math.max(0, W_norm[i][EXPERTISE_COLS.length+j]));
+      
+      const coverage = Math.min(1, skillValues.reduce((s,v)=>s+v,0));
+      const maxW = Math.max(...skillValues);
+      const sumW = skillValues.reduce((s,v)=>s+v,0)+1e-5;
+      const diversity = 1-(maxW/sumW);
+      fSkillDistribution += coverage + 0.5*diversity;
+    }
+    fSkillDistribution /= SKILL_COLS.length;
+    
+    // Part 2: KK diversity (EXPERTISE_COLS) - 15% weight
+    let uniqueKK = 0;
+    for(let j=0;j<EXPERTISE_COLS.length;j++){
+      const kkValues = team.map(i => W_norm[i][j]);
+      const hasKK = kkValues.some(v => v > -1);
+      if(hasKK) uniqueKK++;
+    }
+    const fKKDiversity = Math.min(1.0, uniqueKK / 4);
+    
+    // Combine: 85% skill + 15% KK diversity
+    const fSkill = (fSkillDistribution * 0.85) + (fKKDiversity * 0.15);
+    totalFSkill += fSkill;
+
+    // F_personality (no optimization needed - already efficient)
+    let fPers=0, pairs=0;
+    for(let a=0;a<team.length;a++){
+      for(let b=a+1;b<team.length;b++){
+        const ia=team[a], ib=team[b];
+        const distance = M[ia].reduce((s,v,d)=>s+Math.abs(v-M[ib][d]),0)/4;
+        const compat = distance; // Use distance for complementary matching (higher distance = more complementary)
+        const wi = 1-(inconsistency[ia]*0.7);
+        const wj = 1-(inconsistency[ib]*0.7);
+        fPers += compat*wi*wj;
+        pairs++;
+      }
+    }
+    fPers = pairs>0 ? fPers/pairs : 0;
+    totalFPers += fPers;
+
+    // Team strength for balance
+    const str = team.reduce((s,i)=>s+W_norm[i].reduce((a,b)=>a+Math.max(0,b),0),0);
+    teamStrengths.push(str);
+  });
+
+  const n = validTeams.length;
+  if(n === 0 || teamStrengths.length === 0) return {total:0, fSkill:0, fPers:0, fBal:0};
+  
+  totalFSkill /= n;
+  totalFPers  /= n;
+  const meanStr = teamStrengths.reduce((a,b)=>a+b,0)/teamStrengths.length;
+  const stdStr  = Math.sqrt(teamStrengths.reduce((a,b)=>a+(b-meanStr)**2,0)/teamStrengths.length);
+  const fBal    = Math.max(0, 1-(stdStr/(meanStr+1e-5)));
+
+  return {
+    total: wSkill*totalFSkill + wMbti*totalFPers + wBal*fBal,
+    fSkill: totalFSkill, fPers: totalFPers, fBal
+  };
+}
+
+// Helper function to select fitness function based on performance mode
+function fitnessAuto(partition, W_norm, M, inconsistency, weights){
+  if(PERFORMANCE_MODE === 'optimized'){
+    return fitnessOptimized(partition, W_norm, M, inconsistency, weights);
+  }
+  return fitness(partition, W_norm, M, inconsistency, weights);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  GA CORE
+// ═══════════════════════════════════════════════════════════════
+function makePartition(perm, teamSize){
+  const n = perm.length;
+  const remainder = n % teamSize;
+  
+  let nTeamsNormal, nTeamsLarge;
+  
+  if(remainder === 0) {
+    // Perfect division - all teams same size
+    nTeamsNormal = n / teamSize;
+    nTeamsLarge = 0;
+  } else {
+    // Redistribute: create some teams of size (teamSize+1) to avoid small teams
+    nTeamsLarge = remainder;
+    const totalInLarge = nTeamsLarge * (teamSize + 1);
+    const remaining = n - totalInLarge;
+    nTeamsNormal = remaining / teamSize;
+  }
+  
+  const part = [];
+  let idx = 0;
+  
+  // Create large teams first (size = teamSize + 1)
+  for(let i = 0; i < nTeamsLarge; i++) {
+    part.push(perm.slice(idx, idx + teamSize + 1));
+    idx += teamSize + 1;
+  }
+  
+  // Create normal teams (size = teamSize)
+  for(let i = 0; i < nTeamsNormal; i++) {
+    part.push(perm.slice(idx, idx + teamSize));
+    idx += teamSize;
+  }
+  
+  return part;
+}
+
+function greedySeed(n, teamSize, W_norm){
+  // Sort by total skill (best first)
+  const scores = Array.from({length:n},(_,i)=>({
+    i,
+    s:W_norm[i].reduce((a,b)=>a+Math.max(0,b),0)
+  }));
+  scores.sort((a,b)=>b.s-a.s);
+  
+  // Calculate team distribution (same logic as makePartition)
+  const remainder = n % teamSize;
+  let nTeamsNormal, nTeamsLarge;
+  
+  if(remainder === 0) {
+    nTeamsNormal = n / teamSize;
+    nTeamsLarge = 0;
+  } else {
+    nTeamsLarge = remainder;
+    const totalInLarge = nTeamsLarge * (teamSize + 1);
+    const remaining = n - totalInLarge;
+    nTeamsNormal = remaining / teamSize;
+  }
+  
+  const nTeams = nTeamsNormal + nTeamsLarge;
+  const teams = Array.from({length:nTeams}, ()=>[]);
+  
+  // Round-robin assignment
+  scores.forEach(({i}, idx)=>{
+    const team = idx % nTeams;
+    teams[team].push(i);
+  });
+  
+  // Flatten to permutation (large teams first to match makePartition)
+  const perm = [];
+  // First add large teams
+  for(let t = 0; t < nTeamsLarge; t++) {
+    perm.push(...teams[t]);
+  }
+  // Then add normal teams
+  for(let t = nTeamsLarge; t < nTeams; t++) {
+    perm.push(...teams[t]);
+  }
+  
+  return perm;
+}
+
+function oxCross(p1,p2){
+  const n=p1.length;
+  const a=Math.floor(Math.random()*n), b=Math.floor(Math.random()*n);
+  const lo=Math.min(a,b), hi=Math.max(a,b);
+  
+  const child=new Array(n).fill(-1);
+  for(let i=lo;i<=hi;i++) child[i]=p1[i];
+  
+  const used = new Set(child.filter(v=>v!==-1));
+  let ri=0;
+  for(let i=0;i<n;i++){
+    while(ri<n && used.has(p2[ri])) ri++;
+    if(child[i]===-1 && ri<n) child[i]=p2[ri++];
+  }
+  return child;
+}
+
+function mutate(perm){
+  const c=perm.slice();
+  const a=Math.floor(Math.random()*c.length);
+  const b=Math.floor(Math.random()*c.length);
+  [c[a],c[b]]=[c[b],c[a]];
+  return c;
+}
+
+// Validate permutation (no duplicates, all indices present)
+function validatePermutation(perm, n) {
+  if(perm.length !== n) {
+    throw new Error(`Invalid permutation length: ${perm.length} !== ${n}`);
+  }
+  
+  const seen = new Set(perm);
+  if(seen.size !== n) {
+    throw new Error(`Permutation has duplicates: ${perm.length} elements but ${seen.size} unique`);
+  }
+  
+  for(let i = 0; i < n; i++) {
+    if(!seen.has(i)) {
+      throw new Error(`Permutation missing index: ${i}`);
+    }
+  }
+  
+  return true;
+}
+
+function validatePartition(partition, n){
+  const seen = new Set();
+  let totalStudents = 0;
+  
+  partition.forEach((team, ti) => {
+    if(team.length === 0) {
+      console.warn(`[Validation] Tim ${ti+1} kosong`);
+    }
+    
+    team.forEach(studentIdx => {
+      if(seen.has(studentIdx)) {
+        throw new Error(`Mahasiswa index ${studentIdx} muncul di >1 tim!`);
+      }
+      if(studentIdx < 0 || studentIdx >= n) {
+        throw new Error(`Index mahasiswa invalid: ${studentIdx}`);
+      }
+      seen.add(studentIdx);
+      totalStudents++;
+    });
+  });
+  
+  if(totalStudents !== n) {
+    throw new Error(`Total mahasiswa tidak match: ${totalStudents} != ${n}`);
+  }
+  
+  return true;
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  RUN GA (async with progress + parallelization)
+// ═══════════════════════════════════════════════════════════════
+async function runGA(){
+  const data = workingData.length>0 ? workingData : cleanData;
+  if(!data.length){alert('Import data dulu!');return;}
+
+  const teamSize    = parseInt(document.getElementById('teamSize').value);
+  const popSize     = parseInt(document.getElementById('popSize').value);
+  const maxGen      = parseInt(document.getElementById('maxGen').value);
+  const crossRate   = parseInt(document.getElementById('crossRate').value)/100;
+  const mutRate     = parseInt(document.getElementById('mutRate').value)/100;
+  const eliteRate   = parseInt(document.getElementById('eliteRate').value)/100;
+  const ensembleN   = parseInt(document.getElementById('ensembleRuns').value);
+  const wSkill      = parseInt(document.getElementById('wSkill').value)/100;
+  const wMbti       = parseInt(document.getElementById('wMbti').value)/100;
+  const wBal        = Math.max(0,(100-parseInt(document.getElementById('wSkill').value)-parseInt(document.getElementById('wMbti').value))/100);
+  const weights = {wSkill,wMbti,wBal};
+
+  document.getElementById('runBtn').disabled=true;
+  document.getElementById('progressSection').style.display='block';
+  const logEl = document.getElementById('algoLog');
+  const fillEl = document.getElementById('progressFill');
+  const pctEl  = document.getElementById('progressPct');
+  const lblEl  = document.getElementById('progressLabel');
+  logEl.innerHTML='';
+
+  const log=(msg,cls='')=>{logEl.innerHTML+=`<span class="${cls?'log-'+cls:''}">${msg}</span>\n`;logEl.scrollTop=9999;};
+  const setP=(pct,lbl)=>{fillEl.style.width=pct+'%';pctEl.textContent=pct+'%';lblEl.textContent=lbl;};
+
+  const {W_norm,M,inconsistency} = preprocess(data);
+  const n = data.length;
+  
+  // Calculate team distribution with detailed breakdown
+  const remainder = n % teamSize;
+  let teamSizeMsg;
+  if(remainder === 0) {
+    const nTeams = n / teamSize;
+    teamSizeMsg = `${nTeams} tim × ${teamSize} orang`;
+  } else {
+    const nTeamsLarge = remainder;
+    const totalInLarge = nTeamsLarge * (teamSize + 1);
+    const nTeamsNormal = (n - totalInLarge) / teamSize;
+    teamSizeMsg = `${nTeamsLarge} tim × ${teamSize+1} orang + ${nTeamsNormal} tim × ${teamSize} orang`;
+  }
+  
+  log(`[INFO] ${n} mahasiswa → ${teamSizeMsg}`, 'info');
+  log(`[INFO] Populasi: ${popSize}, Generasi: ${maxGen}, Ensemble: ${ensembleN}x`, 'info');
+
+  // PRE-ASSIGNMENT DETECTION
+  const groupAnalysis = analyzePreAssignedGroups(data, teamSize);
+  if(groupAnalysis.hasPreAssigned) {
+    log(`[PRE-ASSIGNED] ${groupAnalysis.lockedGroups.length} kelompok lengkap (locked)`, 'ok');
+    log(`[PRE-ASSIGNED] ${groupAnalysis.partialGroups.length} kelompok partial (akan dilengkapi)`, 'info');
+    log(`[PRE-ASSIGNED] ${groupAnalysis.unassignedCount} mahasiswa belum punya kelompok`, 'info');
+    groupAnalysis.lockedGroups.forEach(g => {
+      const names = g.members.map(idx => data[idx].Nama).join(', ');
+      log(`  • Kelompok ${g.id}: ${g.members.length} anggota (LOCKED)`, 'ok');
+    });
+  }
+
+  setP(5,'Inisialisasi populasi...');
+  await sleep(10);
+
+  let bestOverall = null, bestFitnessOverall = -Infinity;
+  let finalPartitionResult = null;  // For combining locked + optimized
+  
+  // Try to use Web Workers if available (skip parallel if pre-assigned groups exist)
+  const useParallel = typeof Worker !== 'undefined' && ensembleN > 1 && !groupAnalysis.hasPreAssigned;
+  
+  if(useParallel) {
+    try {
+      log(`[PARALLEL] Menggunakan ${Math.min(ensembleN, navigator.hardwareConcurrency || 4)} workers`, 'info');
+      
+      const pool = new WorkerPool(ensembleN);
+      
+      if(!pool.isAvailable()) {
+        throw new Error('Worker pool not available');
+      }
+      
+      // Create tasks
+      const tasks = Array.from({length: ensembleN}, (_, i) => ({
+        taskId: i,
+        params: {teamSize, popSize, maxGen, crossRate, mutRate, eliteRate}
+      }));
+      
+      // Shared data for all workers
+      const sharedData = {W_norm, M, inconsistency, weights, n, PERFORMANCE_MODE};
+      
+      // Progress tracking
+      const taskProgress = new Map();
+      tasks.forEach(t => taskProgress.set(t.taskId, {gen: 0, bestFit: 0}));
+      
+      const onProgress = (taskId, gen, maxGen, bestFit) => {
+        taskProgress.set(taskId, {gen, bestFit});
+        
+        // Aggregate progress
+        let totalProgress = 0;
+        taskProgress.forEach((p) => {
+          totalProgress += p.gen / maxGen;
+        });
+        const avgProgress = totalProgress / ensembleN;
+        const pct = Math.round(5 + avgProgress * 85);
+        
+        // Show progress of most advanced task
+        let maxGen2 = 0, maxTaskId = 0;
+        taskProgress.forEach((p, tid) => {
+          if(p.gen > maxGen2) {
+            maxGen2 = p.gen;
+            maxTaskId = tid;
+          }
+        });
+        const best = taskProgress.get(maxTaskId);
+        setP(pct, `Parallel: ${maxTaskId+1}/${ensembleN} · Gen ${best.gen} · Best ${best.bestFit.toFixed(3)}`);
+      };
+      
+      // Run all tasks in parallel
+      const results = await pool.runTasks(tasks, sharedData, onProgress);
+      
+      // Find best result
+      results.forEach((result, idx) => {
+        if(result && result.f.total > bestFitnessOverall) {
+          bestFitnessOverall = result.f.total;
+          bestOverall = result;
+        }
+        log(`[Run ${idx+1}/${ensembleN}] Best fitness: ${result?result.f.total.toFixed(4):'N/A'}`, result&&result.f.total>=bestFitnessOverall*0.98?'ok':'');
+      });
+      
+      pool.terminate();
+      
+    } catch(err) {
+      console.error('[PARALLEL] Failed, falling back to sequential:', err);
+      log('[WARN] Parallel execution failed, using sequential mode', 'warn');
+      // Fall through to sequential mode
+      bestOverall = null;
+      bestFitnessOverall = -Infinity;
+    }
+  }
+  
+  // Sequential mode (fallback or if parallel disabled)
+  if(!bestOverall) {
+    log('[SEQUENTIAL] Running ensemble sequentially', 'info');
+    
+    // ── BUILD OPTIMIZATION STRATEGY ──
+    // lockedSet = students in full groups → EXCLUDED from GA entirely
+    // pinnedBlocks = partial group members → PINNED together at start of permutation
+    // freeStudents = unassigned → GA optimizes freely
+    
+    const lockedSet = new Set();
+    const pinnedBlocks = []; // [[subsetIdx, subsetIdx, ...], ...]
+    const studentsToOptimize = []; // maps subsetIdx → fullDataIdx
+    
+    if(groupAnalysis.hasPreAssigned) {
+      // 1) Mark locked students
+      groupAnalysis.lockedGroups.forEach(g => g.members.forEach(idx => lockedSet.add(idx)));
+      
+      // 2) Build studentsToOptimize: partial members first (pinned), then unassigned
+      //    This ensures partial group members land at the start of every permutation,
+      //    and makePartition() will group them into the same team.
+      
+      // Add partial group members as pinned blocks
+      groupAnalysis.partialGroups.forEach(g => {
+        const blockStart = studentsToOptimize.length;
+        g.members.forEach(idx => studentsToOptimize.push(idx));
+        const blockEnd = studentsToOptimize.length;
+        pinnedBlocks.push(Array.from({length: blockEnd - blockStart}, (_, k) => blockStart + k));
+      });
+      
+      const pinnedSize = studentsToOptimize.length;
+      
+      // Add unassigned students
+      for(let i = 0; i < n; i++) {
+        if(!lockedSet.has(i) && !studentsToOptimize.includes(i)) {
+          studentsToOptimize.push(i);
+        }
+      }
+      
+      const nToOptimize = studentsToOptimize.length;
+      
+      log(`[STRATEGY] ${lockedSet.size} locked (excluded), ${pinnedSize} pinned (partial groups), ${nToOptimize - pinnedSize} free`, 'info');
+      log(`[STRATEGY] GA will optimize ${nToOptimize} students`, 'info');
+      if(pinnedBlocks.length > 0) {
+        pinnedBlocks.forEach((block, bi) => {
+          const names = block.map(si => data[studentsToOptimize[si]].Nama).join(', ');
+          log(`  • Pinned block ${bi+1}: [${names}]`, 'info');
+        });
+      }
+      
+      // Edge case: all students locked, nothing to optimize
+      if(nToOptimize === 0) {
+        log('[INFO] All students in locked groups, no optimization needed', 'ok');
+        finalPartitionResult = groupAnalysis.lockedGroups.map(g => [...g.members]);
+        bestOverall = {
+          p: finalPartitionResult.flat(),
+          f: {total: 1, fSkill: 1, fPers: 1, fBal: 1}
+        };
+      }
+    }
+    
+    // Total pinned indices (positions that must not be shuffled)
+    const allPinnedIndices = new Set(pinnedBlocks.flat());
+    const currentN = studentsToOptimize.length || n;
+    const isSubsetMode = groupAnalysis.hasPreAssigned && studentsToOptimize.length > 0 && studentsToOptimize.length < n;
+    
+    // Helper: create permutation that respects pinned positions
+    function createPinnedPerm(size, pinnedIndices) {
+      // Pinned indices stay at their position, free indices are shuffled
+      const freeIndices = [];
+      for(let i = 0; i < size; i++) {
+        if(!pinnedIndices.has(i)) freeIndices.push(i);
+      }
+      const shuffledFree = shuffle([...freeIndices]);
+      
+      const perm = new Array(size);
+      // Pinned: identity mapping (index i → value i)
+      for(const pi of pinnedIndices) {
+        perm[pi] = pi;
+      }
+      // Free: shuffled
+      let fi = 0;
+      for(let i = 0; i < size; i++) {
+        if(!pinnedIndices.has(i)) {
+          perm[i] = shuffledFree[fi++];
+        }
+      }
+      return perm;
+    }
+    
+    // Helper: after crossover/mutation, repair pinned positions
+    function repairPinned(perm, pinnedIndices) {
+      if(pinnedIndices.size === 0) return perm;
+      
+      const result = perm.slice();
+      const pinnedValues = new Set(pinnedIndices); // pinned positions must hold their own index
+      
+      // Find what's wrong: pinned position i should have value i
+      const misplacedFromPinned = []; // values that should be at pinned positions but aren't
+      const wrongAtPinned = []; // positions that are pinned but have wrong values
+      
+      for(const pi of pinnedIndices) {
+        if(result[pi] !== pi) {
+          wrongAtPinned.push(pi);
+          misplacedFromPinned.push(pi); // value pi needs to go to position pi
+        }
+      }
+      
+      // For each pinned position that has wrong value, find where its correct value is and swap
+      for(const pi of wrongAtPinned) {
+        // Find where value pi currently lives
+        const currentPos = result.indexOf(pi);
+        if(currentPos !== -1 && currentPos !== pi) {
+          // Swap
+          result[currentPos] = result[pi];
+          result[pi] = pi;
+        }
+      }
+      
+      return result;
+    }
+    
+    // Run GA if needed
+    if(!bestOverall) {
+      for(let run=0;run<ensembleN;run++){
+        let currentW_norm, currentMnoise;
+        
+        if(isSubsetMode) {
+          // Subset mode: build matrices for only the students we're optimizing
+          currentW_norm = studentsToOptimize.map(fullIdx => W_norm[fullIdx]);
+          
+          const Mnoise_full = M.map(row=>row.map(v=>{
+            const noise=v+(Math.random()-0.5)*0.2;
+            return Math.min(1,Math.max(0,noise));
+          }));
+          currentMnoise = studentsToOptimize.map(fullIdx => 
+            studentsToOptimize.map(fullIdx2 => Mnoise_full[fullIdx][fullIdx2])
+          );
+        } else {
+          // Standard mode: all students
+          currentW_norm = W_norm;
+          currentMnoise = M.map(row=>row.map(v=>{
+            const noise=v+(Math.random()-0.5)*0.2;
+            return Math.min(1,Math.max(0,noise));
+          }));
+        }
+
+        // Init population with pinned-aware permutations
+        let pop=[];
+        
+        if(allPinnedIndices.size > 0) {
+          // Greedy seed but with pinned positions respected
+          const greedyPerm = greedySeed(currentN, teamSize, currentW_norm);
+          pop.push(repairPinned(greedyPerm, allPinnedIndices));
+          
+          for(let i=1;i<popSize;i++) {
+            pop.push(createPinnedPerm(currentN, allPinnedIndices));
+          }
+        } else {
+          // No pinned blocks: standard init
+          const greedyPerm = greedySeed(currentN, teamSize, currentW_norm);
+          if(DEBUG_MODE) validatePermutation(greedyPerm, currentN);
+          pop.push(greedyPerm);
+          
+          for(let i=1;i<popSize;i++) {
+            const randomPerm = shuffle(Array.from({length:currentN},(_,k)=>k));
+            if(DEBUG_MODE) validatePermutation(randomPerm, currentN);
+            pop.push(randomPerm);
+          }
+        }
+
+        let bestFit=-Infinity, noImprove=0;
+        let best=null;
+
+        for(let gen=0;gen<maxGen;gen++){
+          // Evaluate
+          const scored=pop.map(p=>{
+            const part=makePartition(p,teamSize);
+            const f=fitnessAuto(part,currentW_norm,currentMnoise,inconsistency,weights);
+            return {p,f};
+          });
+          scored.sort((a,b)=>b.f.total-a.f.total);
+
+          if(scored[0].f.total>bestFit){
+            bestFit=scored[0].f.total;
+            best=scored[0];
+            noImprove=0;
+          } else noImprove++;
+          
+          const patience = Math.max(100, Math.floor(maxGen * 0.3));
+          if(noImprove>=patience) break;
+
+          // Elitism
+          const elite=Math.max(1,Math.floor(popSize*eliteRate));
+          const newPop=scored.slice(0,elite).map(s=>s.p);
+
+          // Crossover + mutate (with pinned repair)
+          while(newPop.length<popSize){
+            const p1=scored[Math.floor(Math.random()*Math.floor(popSize*0.3))].p;
+            const p2=scored[Math.floor(Math.random()*Math.floor(popSize*0.3))].p;
+            let child=Math.random()<crossRate?oxCross(p1,p2):p1.slice();
+            if(Math.random()<mutRate) child=mutate(child);
+            
+            // CRITICAL: repair pinned positions after crossover/mutation
+            if(allPinnedIndices.size > 0) {
+              child = repairPinned(child, allPinnedIndices);
+            }
+            
+            newPop.push(child);
+          }
+          pop=newPop;
+
+          const yieldInterval = PERFORMANCE_MODE === 'optimized' ? 100 : 50;
+          if(gen%yieldInterval===0){
+            const pct=Math.round(5+((run+gen/maxGen)/ensembleN)*85);
+            setP(pct,`Ensemble ${run+1}/${ensembleN} · Gen ${gen} · Best ${bestFit.toFixed(3)}`);
+            await sleep(0);
+          }
+        }
+
+        // Store best result
+        if(best && best.f) {
+          if(isSubsetMode) {
+            // Convert subset partition back to full indices and combine with locked groups
+            const subsetPartition = makePartition(best.p, teamSize);
+            const candidatePartition = combineLockedAndOptimized(
+              groupAnalysis.lockedGroups, subsetPartition, studentsToOptimize
+            );
+            
+            if(best.f.total > bestFitnessOverall) {
+              bestFitnessOverall = best.f.total;
+              finalPartitionResult = candidatePartition;
+              bestOverall = {p: finalPartitionResult.flat(), f: best.f};
+            }
+          } else {
+            if(best.f.total > bestFitnessOverall) {
+              bestFitnessOverall = best.f.total;
+              bestOverall = best;
+              finalPartitionResult = makePartition(best.p, teamSize);
+            }
+          }
+        }
+        
+        log(`[Run ${run+1}/${ensembleN}] Best fitness: ${best?best.f.total.toFixed(4):'N/A'}`, best&&best.f.total>=bestFitnessOverall*0.98?'ok':'');
+      }
+    }
+  }
+
+  // Local search refinement
+  log('[POST] Local search 2-opt refinement...','info');
+  setP(95,'Local search...');
+  await sleep(10);
+
+  // Safety check: ensure bestOverall exists
+  if(!bestOverall || !bestOverall.p) {
+    log('[ERROR] No valid solution found, creating fallback', 'error');
+    const randomPerm = shuffle(Array.from({length:n},(_,k)=>k));
+    bestOverall = {
+      p: randomPerm,
+      f: fitnessAuto(makePartition(randomPerm, teamSize), W_norm, M, inconsistency, weights)
+    };
+  }
+
+  let finalPartition;
+  let finalFitness;
+  
+  // Skip local search if we have pre-assigned groups (to preserve locked & partial groups)
+  if(groupAnalysis.hasPreAssigned && (groupAnalysis.lockedGroups.length > 0 || groupAnalysis.partialGroups.length > 0)) {
+    log('[SKIP] Skipping local search to preserve pre-assigned groups', 'info');
+    // Use the combined partition directly
+    if(finalPartitionResult) {
+      finalPartition = finalPartitionResult;
+    } else {
+      finalPartition = makePartition(bestOverall.p, teamSize);
+    }
+    finalFitness = fitnessAuto(finalPartition, W_norm, M, inconsistency, weights);
+  } else {
+    // Normal local search for non-locked scenarios
+    let bestPerm = bestOverall.p.slice();
+  
+  // OPT-3: Use optimized local search in optimized mode
+  if(PERFORMANCE_MODE === 'optimized'){
+    // Optimized local search with tabu list and early termination
+    let improved=true;
+    let iters=0;
+    let noImprovementCount=0;
+    let currentFitness = fitnessAuto(makePartition(bestPerm,teamSize),W_norm,M,inconsistency,weights).total;
+    const tabuList = new Set(); // Track tried swaps to avoid revisiting
+    const maxTabuSize = Math.min(100, n*2);
+    
+    while(improved && iters<200){
+      improved=false; iters++;
+      const patience = Math.max(5, Math.floor(20 - iters/10)); // Dynamic patience decreases over time
+      
+      outer: for(let i=0;i<n-1;i++){
+        for(let j=i+1;j<n;j++){
+          const swapKey = `${bestPerm[i]}-${bestPerm[j]}`;
+          if(tabuList.has(swapKey)) continue; // Skip if already tried
+          
+          const trial=bestPerm.slice();
+          [trial[i],trial[j]]=[trial[j],trial[i]];
+          const f1=fitnessAuto(makePartition(trial,teamSize),W_norm,M,inconsistency,weights).total;
+          
+          if(f1>currentFitness+1e-6){
+            bestPerm=trial;
+            currentFitness=f1;
+            improved=true;
+            noImprovementCount=0;
+            tabuList.add(swapKey);
+            if(tabuList.size > maxTabuSize) {
+              // Remove oldest entry (rough FIFO)
+              const firstKey = tabuList.values().next().value;
+              tabuList.delete(firstKey);
+            }
+            break outer;
+          } else {
+            tabuList.add(swapKey);
+            if(tabuList.size > maxTabuSize) {
+              const firstKey = tabuList.values().next().value;
+              tabuList.delete(firstKey);
+            }
+          }
+        }
+      }
+      
+      if(!improved) {
+        noImprovementCount++;
+        if(noImprovementCount >= patience) {
+          log(`[LOCAL] Early stop at iteration ${iters} (no improvement for ${patience} iterations)`, 'info');
+          break;
+        }
+      }
+    }
+    log(`[LOCAL] Optimized local search completed in ${iters} iterations`, 'ok');
+    finalPartition = makePartition(bestPerm, teamSize);
+    finalFitness = fitnessAuto(finalPartition, W_norm, M, inconsistency, weights);
+  } else {
+    // Standard local search (original implementation)
+    let improved=true;
+    let iters=0;
+    let currentFitness = fitnessAuto(makePartition(bestPerm,teamSize),W_norm,M,inconsistency,weights).total;
+    
+    while(improved && iters<200){
+      improved=false; iters++;
+      outer: for(let i=0;i<n-1;i++){
+        for(let j=i+1;j<n;j++){
+          const trial=bestPerm.slice();
+          [trial[i],trial[j]]=[trial[j],trial[i]];
+          const f1=fitnessAuto(makePartition(trial,teamSize),W_norm,M,inconsistency,weights).total;
+          if(f1>currentFitness+1e-6){
+            bestPerm=trial;
+            currentFitness=f1;
+            improved=true;
+            break outer;
+          }
+        }
+      }
+    }
+    
+    // Set final partition from local search
+    finalPartition = makePartition(bestPerm, teamSize);
+    finalFitness = fitnessAuto(finalPartition, W_norm, M, inconsistency, weights);
+  }
+  } // Close the else block from line 2378
+
+  // Validate final partition
+  if(DEBUG_MODE) validatePartition(finalPartition, n);
+
+  log(`[DONE] Fitness akhir: ${finalFitness.total.toFixed(4)} | F_skill=${finalFitness.fSkill.toFixed(3)} | F_pers=${finalFitness.fPers.toFixed(3)} | F_bal=${finalFitness.fBal.toFixed(3)}`,'ok');
+
+  gaResults = {partition:finalPartition, fitness:finalFitness, data, W_norm, M, inconsistency, weights, groupAnalysis};
+  setP(100,'Selesai!');
+  document.getElementById('runBtn').disabled=false;
+
+  await sleep(500);
+  renderResults();
+  goStep(4);
+}
+
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+// ═══════════════════════════════════════════════════════════════
+//  RENDER RESULTS
+// ═══════════════════════════════════════════════════════════════
+function renderResults(){
+  const {partition,fitness:fit,data,W_norm,M,inconsistency} = gaResults;
+
+  // Global scores
+  document.getElementById('globalScores').innerHTML = [
+    {label:'Total Fitness',val:fit.total,color:'var(--orange)',pct:fit.total,tooltip:'Nilai keseluruhan kualitas pembentukan tim (gabungan skill, MBTI, dan balance). Target: >70%'},
+    {label:'Distribusi Skill',val:fit.fSkill,color:'var(--green)',pct:fit.fSkill,tooltip:'Seberapa baik skill tersebar di semua tim. Semakin tinggi = semakin merata. Target: >70%'},
+    {label:'Kecocokan MBTI',val:fit.fPers,color:'var(--purple)',pct:fit.fPers,tooltip:'Kompatibilitas kepribadian antar anggota tim. Semakin tinggi = lebih harmonis. Target: >60%'},
+    {label:'Keseimbangan Tim',val:fit.fBal,color:'var(--accent)',pct:Math.max(0,fit.fBal),tooltip:'Keseimbangan kekuatan antar tim. Semakin tinggi = tidak ada tim yang terlalu lemah/kuat. Target: >80%'},
+  ].map(s=>`
+    <div class="gscore-card" title="${s.tooltip}">
+      <div class="gscore-val" style="color:${s.color}">${(s.val*100).toFixed(1)}<span style="font-size:16px;color:var(--muted)">%</span></div>
+      <div class="gscore-label">${s.label}</div>
+      <div class="gscore-bar"><div class="gscore-bar-fill" style="background:${s.color};width:${Math.min(100,Math.max(0,s.pct*100))}%"></div></div>
+    </div>
+  `).join('');
+
+  // Team cards
+  const grid = document.getElementById('teamGrid');
+  const groupAnalysis = gaResults.groupAnalysis || {lockedGroups: []};
+  const lockedGroupIds = new Set(groupAnalysis.lockedGroups.map(g => g.id));
+  
+  grid.innerHTML = partition.map((team,ti)=>{
+    if(!team.length) return '';
+    const [c1,c2]=TEAM_COLORS[ti%TEAM_COLORS.length];
+    const members = team.map(i=>data[i]);
+    const teamFit = fitnessAuto([team],W_norm,M,inconsistency,gaResults.weights);
+    
+    // Check if this is a locked group
+    const groupName = members[0]?.Kelompok;
+    const isLocked = groupName && lockedGroupIds.has(groupName) && members.every(m => m.Kelompok === groupName);
+
+    // Skill coverage: show top 3 skills only (not kelompok keahlian)
+    const skillCoverages = SKILL_COLS.map((col)=>{
+      // Get raw skill values (0, 1, or 2)
+      const rawSkills = team.map(i => data[i][col] || 0);
+      
+      // Average skill level for this skill in this team
+      const avgSkill = rawSkills.reduce((sum, s) => sum + s, 0) / team.length;
+      
+      // Convert to percentage: 0 → 0%, 1 → 50%, 2 → 100%
+      const coverage = avgSkill / 2;
+      
+      return {col, v: coverage};
+    }).sort((a,b)=>b.v-a.v).slice(0, 3); // Top 3 skills only
+    
+    // Kelompok Keahlian diversity: count how many different KK are represented
+    const kkRepresented = EXPERTISE_COLS.filter(col => {
+      return team.some(i => (data[i][col] || 0) > 0);
+    });
+    const kkNames = kkRepresented.map(col => {
+      // Abbreviate: "Instrumentasi dan Kontrol" → "IK"
+      const words = col.split(' ');
+      if (words.length === 1) return words[0][0]; // "Integrator" → "I"
+      return words.map(w => w[0]).join(''); // "Instrumentasi dan Kontrol" → "IdK" → simplify to "IK"
+    });
+    const kkAbbrev = {
+      'Instrumentasi dan Kontrol': 'IK',
+      'Fisika Bangunan': 'FB', 
+      'Proses Material': 'PM',
+      'Energi': 'E',
+      'Integrator': 'I'
+    };
+    const kkText = kkRepresented.map(col => kkAbbrev[col] || col).join(', ');
+
+    const mbtiDist = {};
+    members.forEach(m=>{
+      const s = MBTI_DIMS.map(d=>m[d]||'?').join('');
+      if(s!=='????') mbtiDist[s]=(mbtiDist[s]||0)+1;
+    });
+
+    return `<div class="team-card">
+      <div class="team-header">
+        <div class="team-avatar" style="background:linear-gradient(135deg,${c1},${c2})">T${ti+1}</div>
+        <div class="team-meta">
+          <h3>${isLocked ? `Kelompok ${groupName}` : `Tim ${ti+1}`}</h3>
+          <p>${team.length} anggota · ${Object.keys(mbtiDist).join(', ')||'MBTI kosong'}</p>
+        </div>
+        ${isLocked ? `<span class="chip chip-green" style="margin-left:auto;">LOCKED</span>` : ''}
+      </div>
+      <div class="team-scores">
+        <span class="score-pill skill">Skill: ${(teamFit.fSkill*100).toFixed(0)}%</span>
+        <span class="score-pill pers">MBTI: ${(teamFit.fPers*100).toFixed(0)}%</span>
+      </div>
+      <div class="team-divider"></div>
+      <div class="team-members">
+        ${members.map((m,mi)=>{
+          const mbti = MBTI_DIMS.every(d=>m[d]) ? MBTI_DIMS.map(d=>m[d]).join('') : null;
+          const topSkills = SKILL_COLS.filter(c=>m[c]>0).slice(0,4);
+          return `<div class="member-row">
+            <div class="member-avatar" style="background:linear-gradient(135deg,${c1}33,${c2}33);color:${c1}">${m.Nama[0]}</div>
+            <div class="member-info">
+              <div class="member-name">${m.Nama}</div>
+              <div class="member-nim">${m.NIM}</div>
+              <div class="member-skills">
+                ${topSkills.map(c=>`<span title="${c}" style="background:${m[c]===2?c1+'33':c1+'18'};color:${m[c]===2?c1:'#888'};font-size:9px;padding:1px 5px;border-radius:4px;font-weight:600;">${c.split(' ').map(w=>w[0]).join('')}${m[c]===2?'★':''}</span>`).join('')}
+              </div>
+            </div>
+            ${mbti?`<span class="mbti-chip" style="background:rgba(139,92,246,0.1);font-size:10px;">${mbti}</span>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="coverage-section">
+        <div class="coverage-title" title="Rata-rata skill level tim untuk 3 skill terkuat. 0% = tidak ada yang punya, 50% = rata-rata basic (1), 100% = semua expert (2). Hijau = Kuat (>65%), Orange = Cukup (35-65%), Merah = Lemah (<35%)">
+          SKILL COVERAGE (TOP 3)
+        </div>
+        ${skillCoverages.map(({col,v})=>{
+          const pct=Math.max(0,Math.min(100,v*100));
+          const cc=pct>65?'var(--green)':pct>35?'var(--orange)':'var(--red)';
+          const label = pct>65?'Kuat':pct>35?'Cukup':'Lemah';
+          return `<div class="coverage-row">
+            <div class="cov-label" title="${col}">${col.split(' ').slice(0,2).join(' ')}</div>
+            <div class="cov-bar" title="${label}: ${pct.toFixed(0)}%"><div class="cov-fill" style="width:${pct}%;background:${cc}"></div></div>
+            <div class="cov-val">${pct.toFixed(0)}%</div>
+          </div>`;
+        }).join('')}
+        <div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);">
+          <strong style="color:var(--text);">Kelompok Keahlian:</strong> ${kkText || 'Tidak ada'} <span style="color:var(--muted);">(${kkRepresented.length}/5)</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  EXPORT
+// ═══════════════════════════════════════════════════════════════
+function exportClean(){
+  if(!cleanData.length) return;
+  const ws = XLSX.utils.json_to_sheet(cleanData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'CleanData');
+  XLSX.writeFile(wb,'teammaker_clean.xlsx');
+}
+
+function exportResults(){
+  if(!gaResults) return;
+  const {partition,data} = gaResults;
+  const rows=[];
+  partition.forEach((team,ti)=>{
+    team.forEach(i=>{
+      const m=data[i];
+      rows.push({
+        'Tim': `Tim ${ti+1}`,
+        'No': m.No,
+        'NIM': m.NIM,
+        'Nama': m.Nama,
+        'MBTI': MBTI_DIMS.map(d=>m[d]||'?').join(''),
+        ...Object.fromEntries(ALL_COLS.map(c=>[c,m[c]])),
+      });
+    });
+    rows.push({Tim:'---',No:'',NIM:'',Nama:'',MBTI:''});
+  });
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Hasil Tim');
+  XLSX.writeFile(wb,'teammaker_results.xlsx');
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  WEB WORKERS PARALLELIZATION
+// ═══════════════════════════════════════════════════════════════
+
+// Worker code as string (inline, no separate file needed)
+const workerCode = `
+// Import needed constants
+const EXPERTISE_COLS = ${JSON.stringify(EXPERTISE_COLS)};
+const SKILL_COLS = ${JSON.stringify(SKILL_COLS)};
+const ALL_COLS = ${JSON.stringify(ALL_COLS)};
+const MBTI_DIMS = ${JSON.stringify(MBTI_DIMS)};
+
+// Copy all GA functions into worker scope
+${shuffle.toString()}
+${makePartition.toString()}
+${fitness.toString()}
+${fitnessOptimized.toString()}
+${fitnessAuto.toString()}
+${greedySeed.toString()}
+${oxCross.toString()}
+${mutate.toString()}
+${validatePermutation.toString()}
+
+// Performance mode configuration (passed from main thread)
+let PERFORMANCE_MODE = 'standard';
+const DEBUG_MODE = ${DEBUG_MODE}; // Copy from main thread
+
+// Worker message handler
+self.onmessage = function(e) {
+  const {type, data} = e.data;
+  
+  if(type === 'RUN_ENSEMBLE'){
+    const {taskId, W_norm, M, inconsistency, weights, n, teamSize, popSize, maxGen, crossRate, mutRate, eliteRate, PERFORMANCE_MODE: perfMode} = data;
+    
+    // Set performance mode for this worker
+    if(perfMode) PERFORMANCE_MODE = perfMode;
+    
+    try {
+      // Noise injection on M
+      const Mnoise = M.map(row=>row.map(v=>{
+        const noise=v+(Math.random()-0.5)*0.2;
+        return Math.min(1,Math.max(0,noise));
+      }));
+
+      // Init population
+      let pop=[];
+      const greedyPerm = greedySeed(n,teamSize,W_norm);
+      if(DEBUG_MODE) validatePermutation(greedyPerm, n);  // Validate greedy seed
+      pop.push(greedyPerm);
+      
+      for(let i=1;i<popSize;i++) {
+        const randomPerm = shuffle(Array.from({length:n},(_,k)=>k));
+        if(DEBUG_MODE) validatePermutation(randomPerm, n);  // Validate random permutation
+        pop.push(randomPerm);
+      }
+
+      let bestFit=-Infinity, noImprove=0;
+      let best=null;
+
+      for(let gen=0;gen<maxGen;gen++){
+        // Evaluate
+        const scored=pop.map(p=>{
+          const part=makePartition(p,teamSize);
+          const f=fitnessAuto(part,W_norm,Mnoise,inconsistency,weights);
+          return {p,f};
+        });
+        scored.sort((a,b)=>b.f.total-a.f.total);
+
+        if(scored[0].f.total>bestFit){
+          bestFit=scored[0].f.total;
+          best=scored[0];
+          noImprove=0;
+        } else noImprove++;
+        
+        const patience = Math.max(100, Math.floor(maxGen * 0.3));
+        if(noImprove>=patience) break;
+
+        // Elitism
+        const elite=Math.max(1,Math.floor(popSize*eliteRate));
+        const newPop=scored.slice(0,elite).map(s=>s.p);
+
+        // Crossover + mutate
+        while(newPop.length<popSize){
+          const p1=scored[Math.floor(Math.random()*Math.floor(popSize*0.3))].p;
+          const p2=scored[Math.floor(Math.random()*Math.floor(popSize*0.3))].p;
+          let child=Math.random()<crossRate?oxCross(p1,p2):p1.slice();
+          if(Math.random()<mutRate) child=mutate(child);
+          newPop.push(child);
+        }
+        pop=newPop;
+
+        // OPT-8: Progress update - less frequent in optimized mode
+        const yieldInterval = PERFORMANCE_MODE === 'optimized' ? 100 : 50;
+        if(gen%yieldInterval===0){
+          self.postMessage({
+            type: 'PROGRESS',
+            taskId,
+            gen,
+            maxGen,
+            bestFit
+          });
+        }
+      }
+
+      // Return result
+      self.postMessage({
+        type: 'RESULT',
+        taskId,
+        result: {
+          p: best.p,
+          f: best.f
+        }
+      });
+      
+    } catch(err) {
+      self.postMessage({
+        type: 'ERROR',
+        taskId,
+        error: err.message
+      });
+    }
+  }
+};
+`;
+
+// WorkerPool class
+class WorkerPool {
+  constructor(maxWorkers) {
+    this.maxWorkers = Math.min(maxWorkers, navigator.hardwareConcurrency || 4);
+    this.workers = [];
+    this.taskQueue = [];
+    this.activeTasks = new Map();
+    this.results = new Map();
+    this.progressCallbacks = new Map();
+    
+    console.log(`[WorkerPool] Initializing with ${this.maxWorkers} workers`);
+    
+    // Create worker blob URL
+    try {
+      const blob = new Blob([workerCode], {type: 'application/javascript'});
+      this.workerURL = URL.createObjectURL(blob);
+      
+      // Create workers
+      for(let i=0; i<this.maxWorkers; i++){
+        this.workers.push(this.createWorker(i));
+      }
+    } catch(err) {
+      console.error('[WorkerPool] Failed to create workers:', err);
+      this.workers = null;
+    }
+  }
+  
+  createWorker(id) {
+    const worker = new Worker(this.workerURL);
+    worker.workerId = id;
+    worker.busy = false;
+    
+    worker.onmessage = (e) => {
+      const {type, taskId, result, gen, maxGen, bestFit, error} = e.data;
+      
+      if(type === 'RESULT'){
+        this.results.set(taskId, result);
+        worker.busy = false;
+        this.activeTasks.delete(taskId);
+        this.processQueue();
+      } else if(type === 'PROGRESS'){
+        const callback = this.progressCallbacks.get(taskId);
+        if(callback) callback(taskId, gen, maxGen, bestFit);
+      } else if(type === 'ERROR'){
+        console.error(`[Worker ${id}] Task ${taskId} error:`, error);
+        worker.busy = false;
+        this.activeTasks.delete(taskId);
+        this.processQueue();
+      }
+    };
+    
+    worker.onerror = (err) => {
+      console.error(`[Worker ${id}] Error:`, err);
+      worker.busy = false;
+    };
+    
+    return worker;
+  }
+  
+  async runTasks(tasks, data, onProgress) {
+    if(!this.workers) {
+      throw new Error('Workers not available');
+    }
+    
+    return new Promise((resolve) => {
+      let completedCount = 0;
+      
+      tasks.forEach(task => {
+        this.progressCallbacks.set(task.taskId, onProgress);
+        this.taskQueue.push({
+          ...task,
+          data,
+          onComplete: () => {
+            completedCount++;
+            if(completedCount === tasks.length) {
+              // All tasks complete
+              const results = tasks.map(t => this.results.get(t.taskId));
+              resolve(results);
+            }
+          }
+        });
+      });
+      
+      this.processQueue();
+    });
+  }
+  
+  processQueue() {
+    if(this.taskQueue.length === 0) return;
+    
+    const availableWorker = this.workers.find(w => !w.busy);
+    if(!availableWorker) return;
+    
+    const task = this.taskQueue.shift();
+    availableWorker.busy = true;
+    this.activeTasks.set(task.taskId, availableWorker);
+    
+    availableWorker.postMessage({
+      type: 'RUN_ENSEMBLE',
+      data: {
+        taskId: task.taskId,
+        ...task.data,
+        ...task.params
+      }
+    });
+    
+    // Store completion callback
+    const originalOnMessage = availableWorker.onmessage;
+    availableWorker.onmessage = (e) => {
+      originalOnMessage.call(availableWorker, e);
+      if(e.data.type === 'RESULT' || e.data.type === 'ERROR'){
+        task.onComplete();
+      }
+    };
+    
+    // Continue processing queue
+    this.processQueue();
+  }
+  
+  terminate() {
+    if(this.workers){
+      this.workers.forEach(w => w.terminate());
+      URL.revokeObjectURL(this.workerURL);
+    }
+    this.workers = null;
+  }
+  
+  isAvailable() {
+    return this.workers !== null;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  INIT & LIBRARY CHECK
+// ═══════════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', function() {
+  // Check if XLSX library loaded
+  if (typeof XLSX === 'undefined') {
+    showError('Library XLSX gagal dimuat. Pastikan ada koneksi internet atau buka file via HTTP server (bukan file://)');
+    console.error('[INIT ERROR] XLSX library not loaded. Please use HTTP server instead of file:// protocol');
+    document.getElementById('fileInput').disabled = true;
+    document.getElementById('dropZone').style.opacity = '0.5';
+    document.getElementById('dropZone').style.pointerEvents = 'none';
+    return;
+  }
+  
+  console.log('[INIT] XLSX library loaded successfully');
+  console.log('[INIT] Team Maker v2.0 ready');
+  
+  updateWeights();
+  updateTeamPreview();
+});
+</script>
+</body>
+</html>
