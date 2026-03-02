@@ -1,4 +1,4 @@
-# Team Maker — Intelligent Team Formation
+# Team Maker
 
 Aplikasi web untuk membagi mahasiswa ke dalam tim yang optimal berdasarkan:
 - **Minat/Kompetensi** (P1, P2, P3): Distribusi merata antar tim
@@ -14,14 +14,13 @@ Menggunakan **Genetic Algorithm** dengan parallelization untuk hasil optimal dal
 ### 1. Setup
 ```bash
 # Clone atau download project
+git clone https://github.com/Naktekfis/team_optimizer.git
 cd team_optimizer
 
 # Buka aplikasi
 # Klik 2x file: team_optimizer.html
 # Atau buka di browser langsung
 ```
-
-**Tidak perlu install apapun!** Aplikasi berjalan 100% di browser.
 
 ---
 
@@ -43,7 +42,47 @@ cd team_optimizer
 
 **Tips:**
 - Gunakan `sample_students.xlsx` sebagai template
-- Generate data dummy: `python create_sample_data.py`
+- Generate data dummy: lihat panduan di bawah
+
+<details>
+<summary>📦 Cara install & jalankan <code>create_sample_data.py</code></summary>
+
+**1. Cek apakah Python sudah terinstall:**
+```bash
+python --version
+# atau
+python3 --version
+```
+
+**2. Jika Python belum ada, install terlebih dahulu:**
+
+- **Windows:** Download dari [python.org](https://www.python.org/downloads/) → saat install, centang ✅ **"Add Python to PATH"**
+- **macOS:**
+  ```bash
+  brew install python3
+  ```
+- **Ubuntu / Debian:**
+  ```bash
+  sudo apt update && sudo apt install python3 python3-pip
+  ```
+
+**3. Install dependensi Python:**
+```bash
+pip install openpyxl
+# atau jika pakai pip3:
+pip3 install openpyxl
+```
+
+**4. Jalankan script:**
+```bash
+python create_sample_data.py
+# atau:
+python3 create_sample_data.py
+```
+
+Script akan menghasilkan file `sample_students.xlsx` yang siap diupload ke aplikasi.
+
+</details>
 
 ---
 
